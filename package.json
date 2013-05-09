@@ -1,0 +1,20 @@
+{
+  "name": "redis.io",
+  "version": "0.0.0",
+  "description": "Reliable Pub/Sub over Redis",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "keywords": [
+    "redis",
+    "pub",
+    "sub",
+    "pub/sub",
+    "message",
+    "queues"
+  ],
+  "author": "Arnout Kazemier <opensource@observe.it>",
+  "license": "MIT"
+}
