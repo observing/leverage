@@ -198,6 +198,20 @@ Leverage.prototype.seval = function seval(script, args) {
   return this;
 };
 
+/**
+ * Introduce the new methods to a given object.
+ *
+ * @param {String} directory Location of the directory.
+ * @param {Object} obj Object to introduce the methods.
+ * @returns {Array} scripts that got introduced as methods.
+ * @api private
+ */
+Leverage.introduce = function introduce(directory, obj) {
+  var scripts = fs.readdirSync(directory).reduce(function format(scripts, script) {
+
+  }, []);
+};
+
 //
 // This is where all the leverage magic is happening.
 //
@@ -244,3 +258,8 @@ scripts.forEach(function each(script) {
     return this.seval(script, args);
   };
 });
+
+//
+// Expose the module.
+//
+module.exports = Leverage;
