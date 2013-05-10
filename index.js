@@ -12,11 +12,11 @@ var slice = Array.prototype.slice;
 
 /**
  *
- * @param {Redis} pub Redis client to publish the messages over.
+ * @param {Redis} client Redis client to publish the messages over.
  * @param {Redis} sub Redis client to subscribe with.
  * @param {Object} options Options
  */
-function Redis(pub, sub, options) {
+function Leverage(client, sub, options) {
   options = options || {};
 
   this.SHA1 = options.SHA1 || Object.create(null);
@@ -27,7 +27,7 @@ function Redis(pub, sub, options) {
   //
   // The pre-generated Redis connections for the pub/sub channels.
   //
-  this.pub = pub;
+  this.client = client;
   this.sub = sub;
 
   //
@@ -38,11 +38,11 @@ function Redis(pub, sub, options) {
     this.emit('readystate#'+ state);
   });
 
-  if (this.pub === this.sub) throw new Error('The pub and sub clients should separate connections');
+  if (this.client === this.sub) throw new Error('The pub and sub clients should separate connections');
   if (Object.keys(this.SHA1) !== scripts.length) this.load();
 }
 
-Redis.prototype.__proto__ = require('events').EventEmitter;
+Leverage.prototype.__proto__ = require('events').EventEmitter;
 
 /**
  * Returns the current readyState of the driver. It supports the following
@@ -60,9 +60,9 @@ Redis.prototype.__proto__ = require('events').EventEmitter;
  *
  * @api private
  */
-Object.defineProperty(Redis.prototype, 'readState', {
+Object.defineProperty(Leverage.prototype, 'readState', {
   get: function readyState() {
-    if (!this.pub || !this.sub) return 'uninitialized';
+    if (!this.client || !this.sub) return 'uninitialized';
     if (Object.keys(this.SHA1) !== scripts.length) return 'loading';
 
     return 'complete';
@@ -75,14 +75,14 @@ Object.defineProperty(Redis.prototype, 'readState', {
  *
  * @api private
  */
-Redis.prototype.load = function load() {
-  var completed = 0
-    , redis = this;
+Leverage.prototype.load = function load() {
+  var leverage = this
+    , completed = 0;
 
   scripts.forEach(function each(script) {
-    redis.refresh(script, function reload() {
+    leverage.refresh(script, function reload() {
       if (++completed === scripts.length) {
-        redis.emit('readstatechange', redis.readyState);
+        leverage.emit('readstatechange', leverage.readyState);
       }
     });
   });
@@ -98,17 +98,17 @@ Redis.prototype.load = function load() {
  * @returns {String} Transformed lua string
  * @api private
  */
-Redis.prototype.prepare = function prepare(code) {
+Leverage.prototype.prepare = function prepare(code) {
   return code.replace('{redis.io::namespace}', this.namespace)
              .replace('{redis.io::backlog}', this.backlog)
              .replace('{redis.io::expire}', this.expire);
 };
 
-Redis.prototype.publish = function publish(channel, message) {
+Leverage.prototype.publish = function publish(channel, message) {
   return this.send(channel, message);
 };
 
-Redis.prototype.subscribe = function subscribe(channel) {
+Leverage.prototype.subscribe = function subscribe(channel) {
   var redis = this;
 
   //
@@ -123,23 +123,23 @@ Redis.prototype.subscribe = function subscribe(channel) {
  * @param {Function} fn Hollaback
  * @api private
  */
-Redis.prototype.refresh = function reload(script, fn) {
+Leverage.prototype.refresh = function reload(script, fn) {
   var code = this.prepare(script.code)
     , SHA1 = crypto.createHash('SHA1').update(code).digest('hex')
-    , redis = this;
+    , leverage = this;
 
-  redis.pub.script('exists', SHA1, function exists(err, has) {
+  leverage.client.script('exists', SHA1, function exists(err, has) {
     if (err) return fn.apply(this, arguments);
     if (!!has) {
-      redis.SHA1[script.name] = SHA1;
+      leverage.SHA1[script.name] = SHA1;
       return fn.call(this);
     }
 
-    redis.pub.script('load', code, function load(err, RSHA1) {
+    leverage.client.script('load', code, function load(err, RSHA1) {
       if (err) return fn.apply(this, arguments);
       if (SHA1 !== RSHA1) return fn.call(this, new Error('SHA1 does not match'));
 
-      redis.SHA1[script.name] = SHA1;
+      leverage.SHA1[script.name] = SHA1;
       return fn.call(this);
     });
   });
@@ -153,10 +153,10 @@ Redis.prototype.refresh = function reload(script, fn) {
  * @param {Object} script
  * @api private
  */
-Redis.prototype.seval = function seval(script, args) {
+Leverage.prototype.seval = function seval(script, args) {
   var SHA1 = this.SHA1[script.name]
-    , fn = args.pop()
-    , redis = this;
+    , leverage = this
+    , fn = args.pop();
 
   //
   // We are not fully loaded yet, queue all calls in our event emitter so it
@@ -164,7 +164,7 @@ Redis.prototype.seval = function seval(script, args) {
   //
   if (this.readyState !== 'complete') {
     return this.once('readystate#complete', function loaded() {
-      return redis.seval.apply(redis, args.concat(fn));
+      return leverage.seval.apply(leverage, args.concat(fn));
     });
   }
 
@@ -176,7 +176,7 @@ Redis.prototype.seval = function seval(script, args) {
   //    our cache and issue a regular eval in paralell so we still get our
   //    results. This way the next call will be cached.
   //
-  redis.pub.send_command('evalsha', [SHA1, args.length].concat(args), function send(err) {
+  leverage.client.send_command('evalsha', [SHA1, args.length].concat(args), function send(err) {
     if (!err || (err && !~err.message.indexOf('NOSCRIPT'))) {
       //
       // We received no error or just a different error then a missing script,
@@ -185,28 +185,30 @@ Redis.prototype.seval = function seval(script, args) {
       return fn.apply(this, arguments);
     }
 
-    var code = redis.prepare(script.code);
+    var code = leverage.prepare(script.code);
 
     //
     // As the request has failed, we are going to re-add the script in to our
     // cache if possible and eval the command
     //
-    redis.refresh(script, function noop() {});
-    redis.pub.send_command('eval', [code, args.length].concat(args), fn);
+    leverage.refresh(script, function noop() {});
+    leverage.client.send_command('eval', [code, args.length].concat(args), fn);
   });
 
   return this;
 };
 
 //
-// This is where all the redis.io magic is happening.
+// This is where all the leverage magic is happening.
 //
 //
 var scripts = [];
 
 [
-  path.join(__dirname, 'lua'),          // Our lua files
-  path.join(__dirname, '../..', 'lua')  // The user's lua files
+  path.join(__dirname, 'lua'),
+  path.join(__dirname, 'leverage'),
+  path.join(__dirname, '../..', 'lua'),
+  path.join(__dirname, '../..', 'leverage')
 ].filter(function filter(directory) {
   var lstat;
 
@@ -233,11 +235,11 @@ var scripts = [];
 // Compile the scripts to new prototype methods which will evaulate.
 //
 scripts.forEach(function each(script) {
-  if (script.name in Redis.prototype) {
-    throw new Error('Redis.io#'+ script.name +' should not be overriden by lua files');
+  if (script.name in Leverage.prototype) {
+    throw new Error('Leverage#'+ script.name +' should not be overriden by lua files');
   }
 
-  Redis.prototype[script.name] = function evals() {
+  Leverage.prototype[script.name] = function evals() {
     var args = slice.call(arguments, 0);
     return this.seval(script, args);
   };

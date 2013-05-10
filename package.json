@@ -1,7 +1,7 @@
 {
-  "name": "redis.io",
+  "name": "leverage",
   "version": "0.0.0",
-  "description": "Reliable Pub/Sub over Redis",
+  "description": "Leverage the awesome power of lua scripting through redis",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -13,7 +13,10 @@
     "sub",
     "pub/sub",
     "message",
-    "queues"
+    "queues",
+    "lua",
+    "scripting",
+    "leverage"
   ],
   "author": "Arnout Kazemier <opensource@observe.it>",
   "license": "MIT"
