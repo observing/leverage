@@ -20,6 +20,8 @@ function Redis(pub, sub, options) {
   options = options || {};
 
   this.SHA1 = options.SHA1 || Object.create(null);
+  this.backlog = options.backlog || 10000;
+  this.expire = options.expire || 1000;
   this.namespace = 'redis.io';
 
   //
@@ -30,7 +32,7 @@ function Redis(pub, sub, options) {
 
   //
   // Proxy all readyState changes to another event to make some of our internal
-  // usage a bit easier
+  // usage a bit easier.
   //
   this.on('readystatechange', function readystatechagne(state) {
     this.emit('readystate#'+ state);
@@ -90,21 +92,27 @@ Redis.prototype.load = function load() {
  * Apply our configuration to the scripts by simply replacing some of our
  * template placeholders with the correct values. This way we can easily
  * configure our lua scripts through redis without having to constantly
- * rewrite our lua scripts when a namespace changes for example
+ * rewrite our lua scripts when a namespace changes for example.
  *
  * @param {String} code LUA code snippet
  * @returns {String} Transformed lua string
  * @api private
  */
 Redis.prototype.prepare = function prepare(code) {
-  return code.replace('{redis.io::namespace}', this.namespace);
+  return code.replace('{redis.io::namespace}', this.namespace)
+             .replace('{redis.io::backlog}', this.backlog)
+             .replace('{redis.io::expire}', this.expire);
 };
 
-Redis.prototype.publish = function publish(channel) {
-  return this;
+Redis.prototype.publish = function publish(channel, message) {
+  return this.send(channel, message);
 };
 
 Redis.prototype.subscribe = function subscribe(channel) {
+  var redis = this;
+
+  //
+  // When a message is published it's stored
   return this;
 };
 
@@ -197,8 +205,8 @@ Redis.prototype.seval = function seval(script, args) {
 var scripts = [];
 
 [
-  path.join(__dirname, 'lua'),
-  path.join(__dirname, '../..', 'lua')
+  path.join(__dirname, 'lua'),          // Our lua files
+  path.join(__dirname, '../..', 'lua')  // The user's lua files
 ].filter(function filter(directory) {
   var lstat;
 
@@ -210,6 +218,8 @@ var scripts = [];
   Array.prototype.push.apply(result, fs.readdirSync(directory));
   return result;
 }, []).forEach(function map(script) {
+  if ('.lua' === path.extname(script)) return;
+
   var location = path.join(__dirname, 'lua', script);
 
   scripts.push({
@@ -220,9 +230,13 @@ var scripts = [];
 });
 
 //
-// Compile
+// Compile the scripts to new prototype methods which will evaulate.
 //
 scripts.forEach(function each(script) {
+  if (script.name in Redis.prototype) {
+    throw new Error('Redis.io#'+ script.name +' should not be overriden by lua files');
+  }
+
   Redis.prototype[script.name] = function evals() {
     var args = slice.call(arguments, 0);
     return this.seval(script, args);
