@@ -208,17 +208,38 @@ Leverage.prototype.seval = function seval(script, args) {
  */
 Leverage.introduce = function introduce(directory, obj) {
   var scripts = fs.readdirSync(directory).reduce(function format(scripts, script) {
+    if ('.lua' !== path.extname(script)) return scripts;
 
+    var location = path.join(directory, script);
+
+    scripts.push({
+      code: fs.readFileSync(location, 'utf-8'),
+      name: script.slice(0, -4).toLowerCase(),
+      path: location
+    });
+
+    return scripts;
   }, []);
+
+  scripts.forEach(function each(script) {
+    if (script.name in obj) {
+      throw new Error('Leverage#'+ script.name +' should not be overriden by lua files');
+    }
+
+    obj[script.name] = function evals() {
+      var args = slice.call(arguments, 0);
+      return this.seval(script, args);
+    };
+  });
+
+  return scripts;
 };
 
 //
 // This is where all the leverage magic is happening.
 //
 //
-var scripts = [];
-
-[
+var scripts = [
   path.join(__dirname, 'lua'),
   path.join(__dirname, 'leverage'),
   path.join(__dirname, '../..', 'lua'),
@@ -226,38 +247,23 @@ var scripts = [];
 ].filter(function filter(directory) {
   var lstat;
 
+  //
+  // Make sure that these directories really exists as we are just guessing here
+  // and hoping that they have a folder where we can generate API methods from.
+  //
   try { lstat = fs.lstatSync(directory); }
   catch (e) { return false; }
 
+  // Ensure it's really a directory.
   return lstat.isDirectory();
-}).reduce(function flatten(result, directory) {
-  Array.prototype.push.apply(result, fs.readdirSync(directory));
-  return result;
-}, []).forEach(function map(script) {
-  if ('.lua' === path.extname(script)) return;
+}).reduce(function flatten(scripts, directory) {
+  Array.prototype.push.apply(
+    scripts,
+    Leverage.introduce(directory, Leverage.prototype)
+  );
 
-  var location = path.join(__dirname, 'lua', script);
-
-  scripts.push({
-    code: fs.readFileSync(location, 'utf-8'),
-    name: script.slice(0, -4).toLowerCase(),
-    path: location
-  });
-});
-
-//
-// Compile the scripts to new prototype methods which will evaulate.
-//
-scripts.forEach(function each(script) {
-  if (script.name in Leverage.prototype) {
-    throw new Error('Leverage#'+ script.name +' should not be overriden by lua files');
-  }
-
-  Leverage.prototype[script.name] = function evals() {
-    var args = slice.call(arguments, 0);
-    return this.seval(script, args);
-  };
-});
+  return scripts;
+}, []);
 
 //
 // Expose the module.
