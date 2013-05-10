@@ -44,3 +44,25 @@ var Leverage = require('leverage')
 
 var leverage = new Leverage(pub, sub);
 ```
+
+It might be possible that you want to add scripts from a different folder then
+our pre-defined folder locations. We've added a `Leverage.introduce` which you
+can use to add scripts. The scripts that are added should be added to the
+`Leverage.scripts` array and you should add the scripts **BEFORE** you construct
+a new Leverage instance.
+
+```js
+var Leverage = require('leverage');
+
+//
+// Give the method the path of your lua files and the object or in our case the
+// prototype where you want to introduce the methods.
+//
+var scripts = Leverage.introduce('/path/to/your/custom/directory', Leverage.prototype);
+
+//
+// IMPORTANT: Add the returned array of added scripts to our Leverage.scipts as
+// are checked during the bootstapping of the Leverage instance.
+//
+Leverage.scripts = Leverage.scripts.concat(scripts);
+```

@@ -39,7 +39,7 @@ function Leverage(client, sub, options) {
   });
 
   if (this.client === this.sub) throw new Error('The pub and sub clients should separate connections');
-  if (Object.keys(this.SHA1) !== scripts.length) this.load();
+  if (Object.keys(this.SHA1) !== Leverage.scripts.length) this.load();
 }
 
 Leverage.prototype.__proto__ = require('events').EventEmitter;
@@ -63,7 +63,7 @@ Leverage.prototype.__proto__ = require('events').EventEmitter;
 Object.defineProperty(Leverage.prototype, 'readState', {
   get: function readyState() {
     if (!this.client || !this.sub) return 'uninitialized';
-    if (Object.keys(this.SHA1) !== scripts.length) return 'loading';
+    if (Object.keys(this.SHA1) !== Leverage.scripts.length) return 'loading';
 
     return 'complete';
   }
@@ -79,9 +79,9 @@ Leverage.prototype.load = function load() {
   var leverage = this
     , completed = 0;
 
-  scripts.forEach(function each(script) {
+  Leverage.scripts.forEach(function each(script) {
     leverage.refresh(script, function reload() {
-      if (++completed === scripts.length) {
+      if (++completed === Leverage.scripts.length) {
         leverage.emit('readstatechange', leverage.readyState);
       }
     });
@@ -230,16 +230,25 @@ Leverage.introduce = function introduce(directory, obj) {
       var args = slice.call(arguments, 0);
       return this.seval(script, args);
     };
+
+    //
+    // Reset the function name to the name of the script which will hopefully
+    // improve stacktraces.
+    //
+    obj[script.name].name = script.name;
   });
 
   return scripts;
 };
 
 //
-// This is where all the leverage magic is happening.
+// This is where all the magic is happening, we are scanning for some
+// pre-defined folders in search of the API methods we want to introduce to
+// expose the lua scripts. We assume that it's either in a special `lua` or
+// `leverage` folder. We check if these folders exist and if they do they get
+// introduced as methods using the `Leverage.introduce` method.
 //
-//
-var scripts = [
+Leverage.scripts = [
   path.join(__dirname, 'lua'),
   path.join(__dirname, 'leverage'),
   path.join(__dirname, '../..', 'lua'),
