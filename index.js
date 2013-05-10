@@ -22,7 +22,7 @@ function Leverage(client, sub, options) {
   this.SHA1 = options.SHA1 || Object.create(null);
   this.backlog = options.backlog || 10000;
   this.expire = options.expire || 1000;
-  this.namespace = 'redis.io';
+  this.namespace = 'leverage';
 
   //
   // The pre-generated Redis connections for the pub/sub channels.
