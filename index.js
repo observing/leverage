@@ -26,14 +26,15 @@ function Leverage(client, sub, options) {
   //
   if ('object' === typeof sub && !options && !sub.send_command) {
     options = sub;
+    sub = null;
   }
 
   options = options || {};
 
+  this.namespace = options.namespace || 'leverage';
   this.SHA1 = options.SHA1 || Object.create(null);
   this.backlog = options.backlog || 10000;
   this.expire = options.expire || 1000;
-  this.namespace = options.namespace || 'leverage';
 
   //
   // The pre-generated Redis connections for the pub/sub channels.
@@ -49,7 +50,10 @@ function Leverage(client, sub, options) {
     this.emit('readystate#'+ state);
   });
 
-  if (this.client === this.sub) throw new Error('The pub and sub clients should separate connections');
+  if (this.client === this.sub) {
+    throw new Error('The pub and sub clients should separate connections');
+  }
+
   if (Object.keys(this.SHA1) !== Leverage.scripts.length) this.load();
 }
 
@@ -71,9 +75,9 @@ Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
  *
  * @api private
  */
-Object.defineProperty(Leverage.prototype, 'readState', {
+Object.defineProperty(Leverage.prototype, 'readyState', {
   get: function readyState() {
-    if (!this.client || !this.sub) return 'uninitialized';
+    if (!this.client) return 'uninitialized';
     if (Object.keys(this.SHA1) !== Leverage.scripts.length) return 'loading';
 
     return 'complete';
@@ -91,9 +95,9 @@ Leverage.prototype.load = function load() {
     , completed = 0;
 
   Leverage.scripts.forEach(function each(script) {
-    leverage.refresh(script, function reload() {
+    leverage.refresh(script, function reload(err) {
       if (++completed === Leverage.scripts.length) {
-        leverage.emit('readstatechange', leverage.readyState);
+        leverage.emit('readystatechange', leverage.readyState);
       }
     });
   });
@@ -110,20 +114,30 @@ Leverage.prototype.load = function load() {
  * @api private
  */
 Leverage.prototype.prepare = function prepare(code) {
-  return code.replace('{redis.io::namespace}', this.namespace)
-             .replace('{redis.io::backlog}', this.backlog)
-             .replace('{redis.io::expire}', this.expire);
+  return code.replace('{leverage::namespace}', this.namespace)
+             .replace('{leverage::backlog}', this.backlog)
+             .replace('{leverage::expire}', this.expire);
 };
 
-Leverage.prototype.publish = function publish(channel, message) {
+Leverage.prototype.publish = function publish(channel, message, fn) {
   return this.send(channel, message);
 };
 
 Leverage.prototype.subscribe = function subscribe(channel) {
   var redis = this;
 
-  //
-  // When a message is published it's stored
+  this.sub.subscribe(channel);
+  this.sub.on('message', function message(channel, packet) {
+    try { packet = JSON.parse(packet); }
+    catch (e) {}
+
+    //
+    // Check if we are missing a packet so we can retrieve it if we want to
+    // maintain order.
+    //
+    var id = packet.id;
+  });
+
   return this;
 };
 
@@ -141,6 +155,7 @@ Leverage.prototype.refresh = function reload(script, fn) {
 
   leverage.client.script('exists', SHA1, function exists(err, has) {
     if (err) return fn.apply(this, arguments);
+
     if (!!has) {
       leverage.SHA1[script.name] = SHA1;
       return fn.call(this);

@@ -63,6 +63,25 @@ describe('Leverage', function () {
 
       expect(client[method]).to.be.a('function');
     });
+
+    client.destroy();
+  });
+
+  it('exposes the generated scripts', function () {
+    expect(Leverage.scripts).to.have.length(1);
+  });
+
+  it('sets the readyState and emits readystatechange events', function (done) {
+    var client = leverage();
+
+    expect(client.readyState).to.equal('loading');
+
+    client.once('readystatechange', function change(state) {
+      expect(state).to.equal(client.readyState);
+      expect(state).to.equal('complete');
+
+      done();
+    });
   });
 
   describe('.method', function () {
