@@ -17,12 +17,23 @@ var slice = Array.prototype.slice;
  * @param {Object} options Options
  */
 function Leverage(client, sub, options) {
+  if (!(this instanceof Leverage)) return new Leverage(client, sub, options);
+
+  //
+  // Flakey detection if we got a options argument or an actual Redis client. We
+  // could do an instanceof RedisClient check but I don't want to have Redis as
+  // a dependency of this module.
+  //
+  if ('object' === typeof sub && !options && !sub.send_command) {
+    options = sub;
+  }
+
   options = options || {};
 
   this.SHA1 = options.SHA1 || Object.create(null);
   this.backlog = options.backlog || 10000;
   this.expire = options.expire || 1000;
-  this.namespace = 'leverage';
+  this.namespace = options.namespace || 'leverage';
 
   //
   // The pre-generated Redis connections for the pub/sub channels.
@@ -42,7 +53,7 @@ function Leverage(client, sub, options) {
   if (Object.keys(this.SHA1) !== Leverage.scripts.length) this.load();
 }
 
-Leverage.prototype.__proto__ = require('events').EventEmitter;
+Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
 
 /**
  * Returns the current readyState of the driver. It supports the following
@@ -224,7 +235,7 @@ Leverage.introduce = function introduce(directory, obj) {
 
     scripts.push({
       code: fs.readFileSync(location, 'utf-8'),
-      name: script.slice(0, -4).toLowerCase(),
+      name: Leverage.method(script),
       path: location
     });
 
@@ -249,6 +260,17 @@ Leverage.introduce = function introduce(directory, obj) {
   });
 
   return scripts;
+};
+
+/**
+ * Generates a JavaScript method compatible name from the given filename.
+ *
+ * @param {String} file The filename, including .lua
+ * @returns {String} The generated method name
+ * @api private
+ */
+Leverage.method = function method(file) {
+  return file.slice(0, -4).toLowerCase().replace(/[^a-z]/g, '');
 };
 
 //
