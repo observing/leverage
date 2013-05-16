@@ -199,6 +199,16 @@ Leverage.prototype.seval = function seval(script, args) {
 };
 
 /**
+ * Destroy leverage and it's attached redis connections.
+ *
+ * @api private
+ */
+Leverage.prototype.destroy = function destroy() {
+  if (this.client) this.client.quit();
+  if (this.sub) this.sub.quit();
+};
+
+/**
  * Introduce the new methods to a given object.
  *
  * @param {String} directory Location of the directory.
