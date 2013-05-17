@@ -31,16 +31,68 @@ function Leverage(client, sub, options) {
 
   options = options || {};
 
-  this.namespace = options.namespace || 'leverage';
-  this.SHA1 = options.SHA1 || Object.create(null);
-  this.backlog = options.backlog || 10000;
-  this.expire = options.expire || 1000;
+  // !IMPORTANT
+  //
+  // As the scripts are introduced to the `prototype` of our Leverage module we
+  // want to make sure that we don't polute this namespace to much. That's why
+  // we've decided to move most of our internal logic in to a `._` private
+  // object that contains most of our logic. This way we only have a small
+  // number prototypes and properties that should not be overriden by scripts.
+  //
+  // !IMPORTANT
 
-  //
-  // The pre-generated Redis connections for the pub/sub channels.
-  //
-  this.client = client;
-  this.sub = sub;
+  this._ = Object.create(null, {
+    //
+    // The namespace is used to prefix all keys that are used by this module.
+    //
+    namespace: {
+      value: options.namespace || 'leverage'
+    },
+
+    //
+    // Stores the SHA1 keys from the scripts that are added.
+    //
+    SHA1: {
+      value: options.SHA1 || Object.create(null)
+    },
+
+    //
+    // The amount of items we should log for our pub/sub
+    //
+    backlog: {
+      value: options.backlog || 10000
+    },
+
+    //
+    // How many seconds should the item stay alive in our backlog.
+    //
+    expire: {
+      value: options.expire || 1000
+    },
+
+    //
+    // The pre-configured & authenticated redis client that is used to send
+    // commands and is loaded with the scripts.
+    //
+    client: {
+      value: client
+    },
+
+    //
+    // Dedicated client that is used for subscribing to a given channel.
+    //
+    sub: {
+      value: sub
+    },
+
+    //
+    // Introduce a bunch of private methods.
+    //
+    load:     { value: Leverage.load.bind(this) },
+    prepare:  { value: Leverage.prepare.bind(this) },
+    refresh:  { value: Leverage.refresh.bind(this) },
+    seval:    { value: Leverage.seval.bind(this) }
+  });
 
   //
   // Proxy all readyState changes to another event to make some of our internal
@@ -50,11 +102,11 @@ function Leverage(client, sub, options) {
     this.emit('readystate#'+ state);
   });
 
-  if (this.client === this.sub) {
+  if (this._.client === this._.sub) {
     throw new Error('The pub and sub clients should separate connections');
   }
 
-  if (Object.keys(this.SHA1) !== Leverage.scripts.length) this.load();
+  if (Object.keys(this._.SHA1) !== Leverage.scripts.length) this._.load();
 }
 
 Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
@@ -77,12 +129,44 @@ Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
  */
 Object.defineProperty(Leverage.prototype, 'readyState', {
   get: function readyState() {
-    if (!this.client) return 'uninitialized';
-    if (Object.keys(this.SHA1).length !== Leverage.scripts.length) return 'loading';
+    if (!this._.client) return 'uninitialized';
+    if (Object.keys(this._.SHA1).length !== Leverage.scripts.length) return 'loading';
 
     return 'complete';
   }
 });
+
+Leverage.prototype.publish = function publish(channel, message, fn) {
+  return this.send(channel, message);
+};
+
+Leverage.prototype.subscribe = function subscribe(channel) {
+  var redis = this;
+
+  this._.sub.subscribe(channel);
+  this._.sub.on('message', function message(channel, packet) {
+    try { packet = JSON.parse(packet); }
+    catch (e) {}
+
+    //
+    // Check if we are missing a packet so we can retrieve it if we want to
+    // maintain order.
+    //
+    var id = packet.id;
+  });
+
+  return this;
+};
+
+/**
+ * Destroy leverage and it's attached redis connections.
+ *
+ * @api private
+ */
+Leverage.prototype.destroy = function destroy() {
+  if (this.client) this.client.quit();
+  if (this.sub) this.sub.quit();
+};
 
 /**
  * Load all the lua scripts from the lua directory which should be loaded in to
@@ -90,12 +174,12 @@ Object.defineProperty(Leverage.prototype, 'readyState', {
  *
  * @api private
  */
-Leverage.prototype.load = function load() {
+Leverage.load = function load() {
   var leverage = this
     , completed = 0;
 
   Leverage.scripts.forEach(function each(script) {
-    leverage.refresh(script, function reload(err) {
+    leverage._.refresh(script, function reload(err) {
       //
       // Shit is broken yo, we should just emit an `error` event here because we
       // cannot operate under these kind of conditions.
@@ -119,32 +203,12 @@ Leverage.prototype.load = function load() {
  * @returns {String} Transformed lua string
  * @api private
  */
-Leverage.prototype.prepare = function prepare(code) {
-  return code.replace('{leverage::namespace}', this.namespace)
-             .replace('{leverage::backlog}', this.backlog)
-             .replace('{leverage::expire}', this.expire);
-};
+Leverage.prepare = function prepare(code) {
+  var _ = this._;
 
-Leverage.prototype.publish = function publish(channel, message, fn) {
-  return this.send(channel, message);
-};
-
-Leverage.prototype.subscribe = function subscribe(channel) {
-  var redis = this;
-
-  this.sub.subscribe(channel);
-  this.sub.on('message', function message(channel, packet) {
-    try { packet = JSON.parse(packet); }
-    catch (e) {}
-
-    //
-    // Check if we are missing a packet so we can retrieve it if we want to
-    // maintain order.
-    //
-    var id = packet.id;
-  });
-
-  return this;
+  return code.replace('{leverage::namespace}', _.namespace)
+             .replace('{leverage::backlog}', _.backlog)
+             .replace('{leverage::expire}', _.expire);
 };
 
 /**
@@ -154,12 +218,12 @@ Leverage.prototype.subscribe = function subscribe(channel) {
  * @param {Function} fn Hollaback
  * @api private
  */
-Leverage.prototype.refresh = function reload(script, fn) {
-  var code = this.prepare(script.code)
+Leverage.refresh = function reload(script, fn) {
+  var code = this._.prepare(script.code)
     , SHA1 = crypto.createHash('SHA1').update(code).digest('hex').toString()
     , leverage = this;
 
-  leverage.client.script('exists', SHA1, function exists(err, has) {
+  leverage._.client.script('exists', SHA1, function exists(err, has) {
     if (err) return fn.apply(this, arguments);
 
     //
@@ -168,15 +232,15 @@ Leverage.prototype.refresh = function reload(script, fn) {
     // See mranney/node_redis#436 for the reported issue.
     //
     if ((Array.isArray(has) && has[0]) || has) {
-      leverage.SHA1[script.name] = SHA1;
+      leverage._.SHA1[script.name] = SHA1;
       return fn.call(this);
     }
 
-    leverage.client.script('load', code, function load(err, RSHA1) {
+    leverage._.client.script('load', code, function load(err, RSHA1) {
       if (err) return fn.apply(this, arguments);
       if (SHA1 !== RSHA1) return fn.call(this, new Error('SHA1 does not match'));
 
-      leverage.SHA1[script.name] = SHA1;
+      leverage._.SHA1[script.name] = SHA1;
       return fn.apply(this, arguments);
     });
   });
@@ -190,8 +254,8 @@ Leverage.prototype.refresh = function reload(script, fn) {
  * @param {Object} script
  * @api private
  */
-Leverage.prototype.seval = function seval(script, args) {
-  var SHA1 = this.SHA1[script.name]
+Leverage.seval = function seval(script, args) {
+  var SHA1 = this._.SHA1[script.name]
     , leverage = this
     , fn = args.pop();
 
@@ -201,7 +265,7 @@ Leverage.prototype.seval = function seval(script, args) {
   //
   if (this.readyState !== 'complete') {
     return this.once('readystate#complete', function loaded() {
-      return leverage.seval.apply(leverage, args.concat(fn));
+      return leverage._.seval.apply(leverage, args.concat(fn));
     });
   }
 
@@ -213,7 +277,7 @@ Leverage.prototype.seval = function seval(script, args) {
   //    our cache and issue a regular eval in paralell so we still get our
   //    results. This way the next call will be cached.
   //
-  leverage.client.send_command('evalsha', [SHA1, args.length].concat(args), function send(err) {
+  leverage._.client.send_command('evalsha', [SHA1, args.length].concat(args), function send(err) {
     if (!err || (err && !~err.message.indexOf('NOSCRIPT'))) {
       //
       // We received no error or just a different error then a missing script,
@@ -222,27 +286,17 @@ Leverage.prototype.seval = function seval(script, args) {
       return fn.apply(this, arguments);
     }
 
-    var code = leverage.prepare(script.code);
+    var code = leverage._.prepare(script.code);
 
     //
     // As the request has failed, we are going to re-add the script in to our
     // cache if possible and eval the command
     //
-    leverage.refresh(script, function noop() {});
-    leverage.client.send_command('eval', [code, args.length].concat(args), fn);
+    leverage._.refresh(script, function noop() {});
+    leverage._.client.send_command('eval', [code, args.length].concat(args), fn);
   });
 
   return this;
-};
-
-/**
- * Destroy leverage and it's attached redis connections.
- *
- * @api private
- */
-Leverage.prototype.destroy = function destroy() {
-  if (this.client) this.client.quit();
-  if (this.sub) this.sub.quit();
 };
 
 /**

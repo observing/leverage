@@ -47,8 +47,8 @@ describe('Leverage', function () {
   it('correctly applies the given options', function (done) {
     var client = redis();
 
-    expect(new Leverage(client, { namespace: 'foo' }).namespace).to.equal('foo');
-    expect(new Leverage(client, null, { namespace: 'bar'}).namespace).to.equal('bar');
+    expect(new Leverage(client, { namespace: 'foo' })._.namespace).to.equal('foo');
+    expect(new Leverage(client, null, { namespace: 'bar'})._.namespace).to.equal('bar');
 
     client.quit(done);
   });
@@ -80,6 +80,18 @@ describe('Leverage', function () {
       expect(state).to.equal(client.readyState);
       expect(state).to.equal('complete');
 
+      client.destroy();
+      done();
+    });
+  });
+
+  it('loads the scripts in to the redis server', function (done) {
+    var client = leverage();
+
+    client.once('readystate#complete', function () {
+      expect(Object.keys(client._.SHA1).length).to.equal(Leverage.scripts.length);
+
+      client.destroy();
       done();
     });
   });
@@ -98,6 +110,24 @@ describe('Leverage', function () {
         , out = 'whatthfuckisgoingonhere';
 
       expect(Leverage.method(name)).to.equal(out);
+    });
+  });
+
+  describe('._.prepare', function () {
+    it('replaces the template variables in the given content', function () {
+      var client = leverage()
+        , template = 'namespace: {leverage::namespace}, backlog: {leverage::backlog}, expire: {leverage::expire}';
+
+      expect(client._.prepare(template)).to.equal('namespace: leverage, backlog: 10000, expire: 1000');
+      client.destroy();
+    });
+
+    it('ignores unknown template variables', function () {
+      var client = leverage()
+        , template = 'namespace: {leverage::namespace}, foo: {leverage::foo}';
+
+      expect(client._.prepare(template)).to.equal('namespace: leverage, foo: {leverage::foo}');
+      client.destroy();
     });
   });
 });
