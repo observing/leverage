@@ -4,7 +4,7 @@
 -- the output using JavaScript, which is __a w e s o m e__.
 --
 
-local namespace = {leverage::namespace}
+local namespace = '{leverage::namespace}'
 local backlog = {leverage::backlog}
 local expire = {leverage::expire}
 
@@ -17,14 +17,14 @@ local message = assert(ARGV[1], 'The message argument is missing')
 --
 -- We increase the id to get a unique message id for this message.
 --
-local id = redis.call('incr', namespace .. '::msg-id', 1)
+local id = redis.call('incr', namespace ..'::'.. channel ..'::msg-id', 1)
 
 --
 -- Our id exceeded the backlog, reset it, this way we also override our "old"
 -- data and keep the database clean.
 --
 if id > backlog then
-  id = redis.call('set', namespace ..'::msg-id', 0)
+  id = redis.call('set', namespace ..'::'.. channel ..'::msg-id', 0)
 end
 
 --
@@ -33,8 +33,8 @@ end
 -- a message. We are going to publish the message to the channel and include the
 -- id of our message.
 --
-redis.call('setex', namespace .. '::backlog::' .. id, expire, message)
-redis.call('publish', namespace .. '::' .. channel, cjson.encode({
+redis.call('setex', namespace ..'::'.. channel ..'::backlog::'.. id, expire, message)
+redis.call('publish', namespace ..'::'.. channel, cjson.encode({
   message = message,
   id      = id
 }))

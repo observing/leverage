@@ -29,7 +29,7 @@ connection:
 var Leverage = require('leverage')
   , redis = require('redis').createClient();
 
-var leverage = new Leverage(redis);
+var leverage = new Leverage(redis, { optional options });
 ```
 
 If you want to leverage the improved Pub/Sub capablities you should supply 2
@@ -42,7 +42,7 @@ var Leverage = require('leverage')
   , pub = require('redis').createClient()
   , sub = require('redis').createClient();
 
-var leverage = new Leverage(pub, sub);
+var leverage = new Leverage(pub, sub, { optional options });
 ```
 
 It might be possible that you want to add scripts from a different folder then
@@ -66,3 +66,47 @@ var scripts = Leverage.introduce('/path/to/your/custom/directory', Leverage.prot
 //
 Leverage.scripts = Leverage.scripts.concat(scripts);
 ```
+
+#### Options
+
+The following options are available, most of these apply to the improved Pub/Sub
+system.
+
+<dl>
+  <dt>namespace</dt>
+  <dd>
+    <p>
+      The namespace is used to prefix all keys that are set by this module
+      inside of your redis installation. This way you can prevent conflicts from
+      happening. It defaults to <code>leverage</code>
+    </p>
+  </dd>
+  <dt>SHA1<dt>
+  <dd>
+    <p>
+      SHA1 can be provided a preconfigured object that contains references to
+      all method -> SHA1 mappings. Only change this if you know what the fuck
+      you are doing. If this is not set we will just check your redis server to
+      find out of the script has been loaded in the internal cache.
+    </p>
+  </dd>
+  <dt>backlog</dt>
+  <dd>
+    <p>
+      How many messages can we store for the pub/sub connection relaiblity if
+      you are sending a lot of message per second you might want to set this to
+      a higher number then you would with lower rate messages. It defaults to
+      <code>10000</code>. The messages are stored using FIFO so if you are
+      storing to much messages it will automatically override older keys.
+    </p>
+  </dd>
+  <dt>expire</dt>
+  <dd>
+    <p>
+      To make sure that we don't leave to much crap in your database all stored
+      messages are provided with a expire value. So the messages can be killed
+      in 2 ways, either by an overflow of the backlog or by an expired key. The
+      default expiree is <code>1000</code>.
+    </p>
+  </dd>
+</dl>
