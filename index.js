@@ -277,24 +277,28 @@ Leverage.seval = function seval(script, args) {
   //    our cache and issue a regular eval in paralell so we still get our
   //    results. This way the next call will be cached.
   //
-  leverage._.client.send_command('evalsha', [SHA1, args.length].concat(args), function send(err) {
-    if (!err || (err && !~err.message.indexOf('NOSCRIPT'))) {
+  leverage._.client.send_command(
+    'evalsha',
+    [SHA1, script.args.KEYS || args.length].concat(args),
+    function send(err) {
+      if (!err || (err && !~err.message.indexOf('NOSCRIPT'))) {
+        //
+        // We received no error or just a different error then a missing script,
+        // return the control to the callback as fast as possible.
+        //
+        return fn.apply(this, arguments);
+      }
+
+      var code = leverage._.prepare(script.code);
+
       //
-      // We received no error or just a different error then a missing script,
-      // return the control to the callback as fast as possible.
+      // As the request has failed, we are going to re-add the script in to our
+      // cache if possible and eval the command
       //
-      return fn.apply(this, arguments);
+      leverage._.refresh(script, function noop() {});
+      leverage._.client.send_command('eval', [code, args.length].concat(args), fn);
     }
-
-    var code = leverage._.prepare(script.code);
-
-    //
-    // As the request has failed, we are going to re-add the script in to our
-    // cache if possible and eval the command
-    //
-    leverage._.refresh(script, function noop() {});
-    leverage._.client.send_command('eval', [code, args.length].concat(args), fn);
-  });
+  );
 
   return this;
 };
@@ -311,12 +315,14 @@ Leverage.introduce = function introduce(directory, obj) {
   var scripts = fs.readdirSync(directory).reduce(function format(scripts, script) {
     if ('.lua' !== path.extname(script)) return scripts;
 
-    var location = path.join(directory, script);
+    var location = path.join(directory, script)
+      , code = fs.readFileSync(location, 'utf-8');
 
     scripts.push({
-      code: fs.readFileSync(location, 'utf-8'),
       name: Leverage.method(script),
-      path: location
+      args: Leverage.parse(code),
+      path: location,
+      code: code
     });
 
     return scripts;
@@ -340,6 +346,41 @@ Leverage.introduce = function introduce(directory, obj) {
   });
 
   return scripts;
+};
+
+/**
+ * Try to figure out how many KEYS and ARGS the given lua scripts expects so we
+ * can properly execute it. Returns an object with the amount of KEYS and ARGV's
+ * we've detected in the script.
+ *
+ * @param {String} lua LUA code snippet
+ * @returns {Object}
+ * @api private
+ */
+Leverage.parse = function parse(lua) {
+  var ARGV = /ARGV\[[^\[]+?\]/g
+    , KEYS = /KEYS\[[^\[]+?\]/g
+    , matches = []
+    , comment;
+
+  //
+  // Iterate over the lines to parse out the
+  //
+  lua.split('\n').forEach(function linework(line) {
+    if (~line.indexOf('--[[')) return comment = true;
+    if (~line.indexOf('--]]')) return comment = false;
+
+    if (comment || /^\--/g.test(line)) return;
+
+    if (ARGV.test(line)) matches.push({ line: line, type: 'ARGV', parser: ARGV });
+    if (KEYS.test(line)) matches.push({ line: line, type: 'KEYS', parser: KEYS });
+  });
+
+  return matches.reduce(function count(found, match) {
+    found[match.type] = found[match.type] + match.line.match(match.parser).length;
+
+    return found;
+  }, { KEYS: 0, ARGV: 0 });
 };
 
 /**
