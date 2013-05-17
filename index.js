@@ -78,7 +78,7 @@ Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
 Object.defineProperty(Leverage.prototype, 'readyState', {
   get: function readyState() {
     if (!this.client) return 'uninitialized';
-    if (Object.keys(this.SHA1) !== Leverage.scripts.length) return 'loading';
+    if (Object.keys(this.SHA1).length !== Leverage.scripts.length) return 'loading';
 
     return 'complete';
   }
@@ -96,6 +96,12 @@ Leverage.prototype.load = function load() {
 
   Leverage.scripts.forEach(function each(script) {
     leverage.refresh(script, function reload(err) {
+      //
+      // Shit is broken yo, we should just emit an `error` event here because we
+      // cannot operate under these kind of conditions.
+      //
+      if (err) leverage.emit('error', err);
+
       if (++completed === Leverage.scripts.length) {
         leverage.emit('readystatechange', leverage.readyState);
       }
@@ -150,13 +156,18 @@ Leverage.prototype.subscribe = function subscribe(channel) {
  */
 Leverage.prototype.refresh = function reload(script, fn) {
   var code = this.prepare(script.code)
-    , SHA1 = crypto.createHash('SHA1').update(code).digest('hex')
+    , SHA1 = crypto.createHash('SHA1').update(code).digest('hex').toString()
     , leverage = this;
 
   leverage.client.script('exists', SHA1, function exists(err, has) {
     if (err) return fn.apply(this, arguments);
 
-    if (!!has) {
+    //
+    // For some odd reason, the `scripts exists SHA` response isn't properly
+    // parsed by the redis client so we are using this flaky check.
+    // See mranney/node_redis#436 for the reported issue.
+    //
+    if ((Array.isArray(has) && has[0]) || has) {
       leverage.SHA1[script.name] = SHA1;
       return fn.call(this);
     }
@@ -166,7 +177,7 @@ Leverage.prototype.refresh = function reload(script, fn) {
       if (SHA1 !== RSHA1) return fn.call(this, new Error('SHA1 does not match'));
 
       leverage.SHA1[script.name] = SHA1;
-      return fn.call(this);
+      return fn.apply(this, arguments);
     });
   });
 
