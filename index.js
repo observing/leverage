@@ -257,7 +257,8 @@ Leverage.refresh = function reload(script, fn) {
 Leverage.seval = function seval(script, args) {
   var SHA1 = this._.SHA1[script.name]
     , leverage = this
-    , fn = args.pop();
+    , fn = args.pop()
+    , keys = script.args.KEYS || args.length;
 
   //
   // We are not fully loaded yet, queue all calls in our event emitter so it
@@ -270,6 +271,13 @@ Leverage.seval = function seval(script, args) {
   }
 
   //
+  // Allow users to specify the amount of keys they are sendings for this
+  // script. If the script isn't to complicated we can actually parse out the
+  // value and the amount of keys/argvs for you.
+  //
+  if ('number' === typeof args[0]) keys = args.shift();
+
+  //
   // 1. Try to execute the script by calling the evalsha command as we assume
   //    that script was initialized when our constructor got initialised.
   //
@@ -279,7 +287,7 @@ Leverage.seval = function seval(script, args) {
   //
   leverage._.client.send_command(
     'evalsha',
-    [SHA1, script.args.KEYS || args.length].concat(args),
+    [SHA1, keys].concat(args),
     function send(err) {
       if (!err || (err && !~err.message.indexOf('NOSCRIPT'))) {
         //
@@ -358,29 +366,52 @@ Leverage.introduce = function introduce(directory, obj) {
  * @api private
  */
 Leverage.parse = function parse(lua) {
-  var ARGV = /ARGV\[[^\[]+?\]/g
-    , KEYS = /KEYS\[[^\[]+?\]/g
-    , matches = []
+  var matches = []
     , comment;
 
   //
-  // Iterate over the lines to parse out the
+  // First step:
+  //
+  // Iterate over the lines to find lines that probably have an ARGV or KEYS.
   //
   lua.split('\n').forEach(function linework(line) {
+    var ARGV = /ARGV\[[^\[]+?\]/gm
+      , KEYS = /KEYS\[[^\[]+?\]/gm;
+
     if (~line.indexOf('--[[')) return comment = true;
     if (~line.indexOf('--]]')) return comment = false;
 
-    if (comment || /^\--/g.test(line)) return;
+    if (comment || /^\-\-/g.test(line)) return;
 
     if (ARGV.test(line)) matches.push({ line: line, type: 'ARGV', parser: ARGV });
     if (KEYS.test(line)) matches.push({ line: line, type: 'KEYS', parser: KEYS });
   });
 
-  return matches.reduce(function count(found, match) {
-    found[match.type] = found[match.type] + match.line.match(match.parser).length;
+  //
+  // Second step:
+  //
+  // Eliminate the duplicates so we actually know how many KEYS and ARGV's the
+  // scripts expects.
+  //
+  var set = matches.reduce(function count(found, match) {
+    match.line.match(match.parser).forEach(function each(thingy) {
+      if (~found[match.type].indexOf(thingy)) return;
+
+      return found[match.type].push(thingy);
+    });
 
     return found;
-  }, { KEYS: 0, ARGV: 0 });
+  }, { KEYS: [], ARGV: [] });
+
+  //
+  // Third step:
+  //
+  // Just return the shit.
+  //
+  return {
+    KEYS: set.KEYS.length,
+    ARGV: set.ARGV.length
+  };
 };
 
 /**

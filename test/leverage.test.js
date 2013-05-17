@@ -113,6 +113,31 @@ describe('Leverage', function () {
     });
   });
 
+  describe('.parse', function () {
+    var fs = require('fs');
+
+    var unfail = fs.readFileSync(__dirname + '/fixtures/unfail.lua', 'utf8')
+      , ratelimit = fs.readFileSync(__dirname + '/fixtures/ratelimit.lua', 'utf8')
+      , cas = fs.readFileSync(__dirname + '/fixtures/cas.lua', 'utf8');
+
+    it('correctly detects duplicate KEYS and ARGS', function () {
+      var stats = Leverage.parse(cas);
+
+      expect(stats.ARGV).to.equal(2);
+      expect(stats.KEYS).to.equal(1);
+
+      stats = Leverage.parse(ratelimit);
+
+      expect(stats.ARGV).to.equal(2);
+      expect(stats.KEYS).to.equal(1);
+
+      stats = Leverage.parse(unfail);
+
+      expect(stats.ARGV).to.equal(4);
+      expect(stats.KEYS).to.equal(0);
+    });
+  });
+
   describe('._.prepare', function () {
     it('replaces the template variables in the given content', function () {
       var client = leverage()
