@@ -152,9 +152,7 @@ Object.defineProperty(Leverage.prototype, 'readyState', {
  * @api public
  */
 Leverage.prototype.publish = function publish(channel, message, fn) {
-  fn = fn || noop;
-
-  return this.send(channel, message, fn);
+  return this.leveragesend(channel, message, fn || noop);
 };
 
 /**
@@ -178,20 +176,25 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   //
   // Reliability configuration.
   //
-  var ordered = options.ordered || false
-    , replay = options.replay || 10
+  var ordered = options.ordered || false  // Should we maintain order
+    , replay = options.replay || 10       // Pervious events that should be replayed
+    , queue = []
     , id = 0;
+
+  function queueorsend(channel, packet) {
+
+  }
+
+  this.leveragejoin(channel, replay, function join(err, data) {
+    if (err) console.log(err.message, err.stack);
+  });
 
   this._.sub.subscribe(channel);
   this._.sub.on('message', function message(channel, packet) {
     try { packet = JSON.parse(packet); }
     catch (e) { return leverage.emit(channel +'::error', e); }
 
-    //
-    // Check if we are missing a packet so we can retrieve it if we want to
-    // maintain order.
-    //
-    var id = packet.id;
+    queueorsend(channel, packet);
   });
 
   return this;
@@ -306,7 +309,11 @@ Leverage.seval = function seval(script, args) {
   //
   if ('complete' !== this.readyState) {
     return this.once('readystate#complete', function loaded() {
-      return leverage._.seval.apply(leverage, args.concat(fn));
+      //
+      // It's fully loaded again, but as we pop()'d the callback off it, we need
+      // to concat it again or we will lose the callback argument.
+      //
+      return leverage._.seval.call(leverage, script, args.concat(fn));
     });
   }
 
@@ -335,13 +342,13 @@ Leverage.seval = function seval(script, args) {
   leverage._.client.send_command(
     'evalsha',
     [SHA1, keys].concat(args),
-    function send(err) {
+    function send(err, data) {
       if (!err || (err && !~err.message.indexOf('NOSCRIPT'))) {
         //
         // We received no error or just a different error then a missing script,
         // return the control to the callback as fast as possible.
         //
-        return fn.apply(this, arguments);
+        return fn.call(this, Leverage.error(err, script), data);
       }
 
       var code = leverage._.prepare(script.code);
@@ -351,11 +358,63 @@ Leverage.seval = function seval(script, args) {
       // cache if possible and eval the command
       //
       leverage._.refresh(script, function noop() {});
-      leverage._.client.send_command('eval', [code, args.length].concat(args), fn);
+      leverage._.client.send_command(
+        'eval',
+        [code, keys].concat(args),
+        function evaled(err, data) {
+          return fn.call(this, Leverage.error(err, script), data)
+        }
+      );
     }
   );
 
   return this;
+};
+
+/**
+ * Parse the errors that are returned from Redis to see if a script has failed
+ * to execute.
+ *
+ * @param {Error} err Error or nothing.
+ * @returns {Error} LuaError or nothing.
+ * @api private
+ */
+Leverage.error = function error(err, script) {
+  if (!err) return err;
+
+  //
+  // The regular expression is kindly provided by the awesome Wolverine library
+  // from Shopify (Shopify/wolverine)
+  //
+  var pattern = /ERR Error (compiling|running) script \(.*?\): .*?:(\d+): (.*)/
+    , data = pattern.exec(err.message);
+
+  //
+  // It's a regular error, it doesn't have to be re-created as a LUA based
+  // error.
+  //
+  if (!data) return err;
+
+  var lua = new Error(data[3])
+    , stack = err.stack.split('\n');
+
+  // Remove the first line from the original stack as it's the same as the message
+  stack.shift();
+  stack.unshift(
+    '    at '
+    + script.code.split('\n')[data[2] - 1]  // Snippet of the line that fucked it up
+    + '('
+    + script.path                           // The location of the script.
+    +':'
+    + data[2]                               // The line number of the script.
+    + ')'
+  );
+  stack.unshift('Error: '+ data[3]);
+  lua.stack = stack.join('\n');
+
+  // Add a reference to the original error.
+  lua.original = err;
+  return lua;
 };
 
 /**
@@ -390,7 +449,7 @@ Leverage.introduce = function introduce(directory, obj) {
 
     obj[script.name] = function evals() {
       var args = slice.call(arguments, 0);
-      return this.seval(script, args);
+      return this._.seval(script, args);
     };
 
     //

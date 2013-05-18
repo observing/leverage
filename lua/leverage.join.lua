@@ -18,7 +18,7 @@ local id = redis.call('get', namespace ..'::'.. channel ..'::msg-id')
 local mget = {}
 
 for i = id, retrieve, -1 do
-  mget[] = namespace ..'::'.. channel ..'::backlog::'.. id
+  mget[i] = namespace ..'::'.. channel ..'::backlog::'.. id
 end
 
 --
