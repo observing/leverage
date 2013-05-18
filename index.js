@@ -174,27 +174,49 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     , _ = this._;
 
   //
-  // Reliability configuration.
+  // Reliability configuration:
   //
-  var ordered = options.ordered || false  // Should we maintain order
-    , replay = options.replay || 10       // Pervious events that should be replayed
+  // ordered: Should we maintain order of messages at the cost of increased
+  //          latcency as messages are queued until we have everything.
+  // replay:  How many events should we retreive when we join so they can be
+  //          replayed instantly as we might have received a message when we
+  //          joined the channe.
+  // bailout: Should we unsubscribe from the channel if we cannot maintain or
+  //          guarantee the relaiability
+  //
+  var ordered = options.ordered || false
+    , bailout = options.bailout || false
+    , replay = options.replay || 10
     , queue = []
     , id = 0;
 
-  function queueorsend(channel, packet) {
+  /**
+   * Check if we need queue messages or can pass them directly to the connected
+   * client.
+   */
+  function queueorsend(packet) {
 
+    //
+    // The message is in order, increase the id to the latest id and emit the
+    // message.
+    //
+    id = +packet.id;
+    leverage.emit(channel + '::message', packet.message);
   }
 
   this.leveragejoin(channel, replay, function join(err, data) {
     if (err) console.log(err.message, err.stack);
+
+    id = +data.id;
+    data.messages.forEach(queueorsend.bind(this));
   });
 
-  this._.sub.subscribe(channel);
-  this._.sub.on('message', function message(channel, packet) {
+  this._.sub.subscribe(this._.namespace +'::'+ channel);
+  this._.sub.on('message', function message(namespace, packet) {
     try { packet = JSON.parse(packet); }
     catch (e) { return leverage.emit(channel +'::error', e); }
 
-    queueorsend(channel, packet);
+    queueorsend(packet);
   });
 
   return this;
