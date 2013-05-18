@@ -14,7 +14,7 @@ local retrieve = assert(tonumber(ARGV[1]), 'The retrieve amount is missing or Na
 -- Retrieve the current message id so we can figure out which id's we need to
 -- retrieve.
 --
-local id = redis.call('get', namespace ..'::'.. channel ..'::msg-id')
+local id = tonumber(redis.call('get', namespace ..'::'.. channel ..'::msg-id')) or 0
 local mget = {}
 
 for i = id, retrieve, -1 do
@@ -25,6 +25,6 @@ end
 -- Return all the found things
 --
 return cjson.encode({
-  id        = id
-  retrieved = redis.call('mget', mget)
+  id       = id,
+  messages = redis.call('mget', mget)
 })

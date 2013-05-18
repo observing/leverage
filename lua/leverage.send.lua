@@ -17,7 +17,7 @@ local message = assert(ARGV[1], 'The message argument is missing')
 --
 -- We increase the id to get a unique message id for this message.
 --
-local id = redis.call('incr', namespace ..'::'.. channel ..'::msg-id', 1)
+local id = redis.call('incr', namespace ..'::'.. channel ..'::msg-id')
 
 --
 -- Our id exceeded the backlog, reset it, this way we also override our "old"

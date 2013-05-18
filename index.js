@@ -362,7 +362,7 @@ Leverage.seval = function seval(script, args) {
         'eval',
         [code, keys].concat(args),
         function evaled(err, data) {
-          return fn.call(this, Leverage.error(err, script), data)
+          return fn.call(this, Leverage.error(err, script), data);
         }
       );
     }
