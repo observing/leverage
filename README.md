@@ -88,6 +88,21 @@ var scripts = Leverage.introduce('/path/to/your/custom/directory', Leverage.prot
 Leverage.scripts = Leverage.scripts.concat(scripts);
 ```
 
+FYI: The `Leverage.introduce` methods returns an array with following data
+structure:
+
+```
+{
+  name: 'hello',
+  args: {
+    KEYS: 2,
+    ARGV: 2
+  },
+  path: '/usr/wtf/path/to/file/hello.lua',
+  code: 'local foo = KEYS[0]\nlocal bar = KEYS[1] .. etc ..'
+}
+```
+
 We we attempt to load in the lua scripts in to the Redis server we attempt to
 parse the script to automatically detect how many keys that should be send to
 the server. If your code isn't to magical it should just parse it correctly and
