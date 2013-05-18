@@ -18,7 +18,7 @@ local id = tonumber(redis.call('get', namespace ..'::'.. channel ..'::msg-id')) 
 local mget = {}
 
 for i = id, retrieve, -1 do
-  mget[i] = namespace ..'::'.. channel ..'::backlog::'.. id
+  table.insert(mget, namespace ..'::'.. channel ..'::backlog::'.. id)
 end
 
 --
@@ -26,5 +26,5 @@ end
 --
 return cjson.encode({
   id       = id,
-  messages = redis.call('mget', mget)
+  messages = redis.call('mget', unpack(mget))
 })
