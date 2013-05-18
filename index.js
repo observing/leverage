@@ -11,10 +11,12 @@ var crypto = require('crypto')
 var slice = Array.prototype.slice;
 
 /**
+ * Leverage the awesome power of lua scripting.
  *
+ * @constructor
  * @param {Redis} client Redis client to publish the messages over.
  * @param {Redis} sub Redis client to subscribe with.
- * @param {Object} options Options
+ * @param {Object} options Options.
  */
 function Leverage(client, sub, options) {
   if (!(this instanceof Leverage)) return new Leverage(client, sub, options);
@@ -57,7 +59,7 @@ function Leverage(client, sub, options) {
     },
 
     //
-    // The amount of items we should log for our pub/sub
+    // The amount of items we should log for our Pub/Sub.
     //
     backlog: {
       value: options.backlog || 10000
@@ -249,7 +251,8 @@ Leverage.refresh = function reload(script, fn) {
 };
 
 /**
- * Safely eval a given redis script.
+ * Safely eval a given redis script or it can be used as a setter of KEYS.
+ * Because attempting to parse the script can be a flakey.
  *
  * @param {Object} script
  * @api private
@@ -264,7 +267,7 @@ Leverage.seval = function seval(script, args) {
   // We are not fully loaded yet, queue all calls in our event emitter so it
   // will be issued once all scripts are loaded.
   //
-  if (this.readyState !== 'complete') {
+  if ('complete' !== this.readyState) {
     return this.once('readystate#complete', function loaded() {
       return leverage._.seval.apply(leverage, args.concat(fn));
     });
@@ -275,7 +278,14 @@ Leverage.seval = function seval(script, args) {
   // script. If the script isn't to complicated we can actually parse out the
   // value and the amount of keys/argvs for you.
   //
-  if ('number' === typeof args[0]) keys = args.shift();
+  if ('number' === typeof args[0]) {
+    script.args.KEYS = keys = args.shift();
+
+    //
+    // This was just a set operation so we can safely bailout.
+    //
+    if (!args.length) return this;
+  }
 
   //
   // 1. Try to execute the script by calling the evalsha command as we assume

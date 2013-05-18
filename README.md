@@ -22,6 +22,27 @@ These files will be introduced as methods on the `Leverage` prototype. So if you
 have a `hello.lua` file in the `leverage` folder we will automatically make a
 `leverage.hello()` method.
 
+Because we are introducing the scripts as methods in the `Leverage.prototype`
+there are a couple of names that blocked for usage or they would destroy the
+modules internals. We've made sure that most of internals of this module are
+namespaced user the `_` property but there are however a couple methods exposed
+on the prototype:
+
+- `_` Our private internal namespace for logic and options.
+- `readyState` Which indicates if everything is loaded correctly.
+- `publish` For our improved Pub/Sub.
+- `subscribe` For our improved Pub/Sub.
+- `destroy` For closing all used/wrapped Redis connections.
+- [All EventEmitter methods][EE] and [it's private properties][EEprivate]
+
+And just to be save, don't use methods that are prefixed with an underscore
+which will just protect you possible private node internals. Other then these
+properties and methods your save to anything you want as we will just remove all
+forbidden chars, numbers from your script name and transform it to lowercase.
+
+[EE]: http://nodejs.org/api/events.html#events_class_events_eventemitter
+[EEprivate]: https://github.com/joyent/node/blob/master/lib/events.js#L26-L37
+
 To initialize the module you need to provide it with atleast one active redis
 connection:
 
@@ -65,6 +86,34 @@ var scripts = Leverage.introduce('/path/to/your/custom/directory', Leverage.prot
 // are checked during the bootstapping of the Leverage instance.
 //
 Leverage.scripts = Leverage.scripts.concat(scripts);
+```
+
+We we attempt to load in the lua scripts in to the Redis server we attempt to
+parse the script to automatically detect how many keys that should be send to
+the server. If your code isn't to magical it should just parse it correctly and
+set the amount of KEYS and ARGV's of your script. There might be edge cases
+where you are iterating over the keys and args or we just fail to correctly
+parse your lua code because you a frigging lua wizzard. For these edge cases you
+can supply every generated method with a number. This number should represent
+the amount of KEYS you are sending to your scripts.
+
+```js
+leverage.customscript(2, 'KEY1', 'KEY2', 'ARGS', 'ARGS', fn);
+```
+
+But doing this everytime can be a bit wastefull that's why you can also just
+tell us once and the module will memorize it for you so all other calls will
+just use the same amount of keys.
+
+```js
+leverage.customscript(2);
+leverage.otherscript(10);
+leverage.anotherscript(3);
+
+//
+// You can now call the scripts without the needed key amount argument.
+//
+leverage.customscript('KEY1', 'KEY2', 'ARGS', 'ARGS', fn);
 ```
 
 #### Options
