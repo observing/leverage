@@ -33,10 +33,12 @@ end
 -- a message. We are going to publish the message to the channel and include the
 -- id of our message.
 --
-redis.call('setex', namespace ..'::'.. channel ..'::backlog::'.. id, expire, message)
-redis.call('publish', namespace ..'::'.. channel, cjson.encode({
+local packet = cjson.encode({
   message = message,
   id      = id
-}))
+})
+
+redis.call('setex', namespace ..'::'.. channel ..'::backlog::'.. id, expire, packet)
+redis.call('publish', namespace ..'::'.. channel, packet)
 
 return id
