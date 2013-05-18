@@ -10,6 +10,11 @@ var crypto = require('crypto')
 //
 var slice = Array.prototype.slice;
 
+//
+// Placeholder for callbacks.
+//
+function noop() {}
+
 /**
  * Leverage the awesome power of lua scripting.
  *
@@ -138,17 +143,49 @@ Object.defineProperty(Leverage.prototype, 'readyState', {
   }
 });
 
+/**
+ * Publish the message relaiably.
+ *
+ * @param {String} channel The channel we want to send to.
+ * @param {String} message The message to send
+ * @param {Function} fn The callback function.
+ * @api public
+ */
 Leverage.prototype.publish = function publish(channel, message, fn) {
-  return this.send(channel, message);
+  fn = fn || noop;
+
+  return this.send(channel, message, fn);
 };
 
-Leverage.prototype.subscribe = function subscribe(channel) {
-  var redis = this;
+/**
+ * Subscribe to our highly relaiable message queue. All messages are emitted
+ * using a `<channel>::message` event on Leverage.
+ *
+ * Options:
+ * - ordered: Should we maintain message order if we miss a message.
+ * - retrieve: When we first connect, how many old messages should we retrieve.
+ *
+ * @param {String} channel The channel name we want to subscribe to.
+ * @param {Object} options Subscription options.
+ * @api public
+ */
+Leverage.prototype.subscribe = function subscribe(channel, options) {
+  options = options || {};
+
+  var leverage = this
+    , _ = this._;
+
+  //
+  // Reliability configuration.
+  //
+  var ordered = options.ordered || false
+    , replay = options.replay || 10
+    , id = 0;
 
   this._.sub.subscribe(channel);
   this._.sub.on('message', function message(channel, packet) {
     try { packet = JSON.parse(packet); }
-    catch (e) {}
+    catch (e) { return leverage.emit(channel +'::error', e); }
 
     //
     // Check if we are missing a packet so we can retrieve it if we want to
@@ -278,7 +315,7 @@ Leverage.seval = function seval(script, args) {
   // script. If the script isn't to complicated we can actually parse out the
   // value and the amount of keys/argvs for you.
   //
-  if ('number' === typeof args[0]) {
+  if ('number' === typeof args[0] && args[0] >= 0) {
     script.args.KEYS = keys = args.shift();
 
     //

@@ -174,3 +174,7 @@ system.
     </p>
   </dd>
 </dl>
+
+## LICENSE
+
+MIT

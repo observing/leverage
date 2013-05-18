@@ -68,7 +68,7 @@ describe('Leverage', function () {
   });
 
   it('exposes the generated scripts', function () {
-    expect(Leverage.scripts).to.have.length(1);
+    expect(Leverage.scripts).to.have.length(2);
   });
 
   it('sets the readyState and emits readystatechange events', function (done) {
