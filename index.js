@@ -41,10 +41,10 @@ function Leverage(client, sub, options) {
   // !IMPORTANT
   //
   // As the scripts are introduced to the `prototype` of our Leverage module we
-  // want to make sure that we don't polute this namespace to much. That's why
+  // want to make sure that we don't pollute this namespace to much. That's why
   // we've decided to move most of our internal logic in to a `._` private
   // object that contains most of our logic. This way we only have a small
-  // number prototypes and properties that should not be overriden by scripts.
+  // number prototypes and properties that should not be overridden by scripts.
   //
   // !IMPORTANT
 
@@ -78,7 +78,7 @@ function Leverage(client, sub, options) {
     },
 
     //
-    // The pre-configured & authenticated redis client that is used to send
+    // The pre-configured & authenticated Redis client that is used to send
     // commands and is loaded with the scripts.
     //
     client: {
@@ -144,7 +144,7 @@ Object.defineProperty(Leverage.prototype, 'readyState', {
 });
 
 /**
- * Publish the message relaiably.
+ * Publish the message reliably.
  *
  * @param {String} channel The channel we want to send to.
  * @param {String} message The message to send
@@ -156,7 +156,7 @@ Leverage.prototype.publish = function publish(channel, message, fn) {
 };
 
 /**
- * Subscribe to our highly relaiable message queue. All messages are emitted
+ * Subscribe to our highly reliable message queue. All messages are emitted
  * using a `<channel>::message` event on Leverage.
  *
  * Options:
@@ -177,12 +177,12 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   // Reliability configuration:
   //
   // ordered: Should we maintain order of messages at the cost of increased
-  //          latcency as messages are queued until we have everything.
-  // replay:  How many events should we retreive when we join so they can be
+  //          latency as messages are queued until we have everything.
+  // replay:  How many events should we retrieve when we join so they can be
   //          replayed instantly as we might have received a message when we
-  //          joined the channe.
+  //          joined the channel.
   // bailout: Should we unsubscribe from the channel if we cannot maintain or
-  //          guarantee the relaiability
+  //          guarantee the reliability.
   //
   var ordered = options.ordered || false
     , bailout = options.bailout || false
@@ -193,6 +193,9 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   /**
    * Check if we need queue messages or can pass them directly to the connected
    * client.
+   *
+   * @param {Object} packet Message packet
+   * @api private
    */
   function queueorsend(packet) {
 
@@ -223,7 +226,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
 };
 
 /**
- * Destroy leverage and it's attached redis connections.
+ * Destroy leverage and it's attached Redis connections.
  *
  * @api private
  */
@@ -260,10 +263,10 @@ Leverage.load = function load() {
 /**
  * Apply our configuration to the scripts by simply replacing some of our
  * template placeholders with the correct values. This way we can easily
- * configure our lua scripts through redis without having to constantly
+ * configure our lua scripts through Redis without having to constantly
  * rewrite our lua scripts when a namespace changes for example.
  *
- * @param {String} code LUA code snippet
+ * @param {String} code Lua code snippet
  * @returns {String} Transformed lua string
  * @api private
  */
@@ -292,7 +295,7 @@ Leverage.refresh = function reload(script, fn) {
 
     //
     // For some odd reason, the `scripts exists SHA` response isn't properly
-    // parsed by the redis client so we are using this flaky check.
+    // parsed by the Redis client so we are using this flaky check.
     // See mranney/node_redis#436 for the reported issue.
     //
     if ((Array.isArray(has) && has[0]) || has) {
@@ -313,7 +316,7 @@ Leverage.refresh = function reload(script, fn) {
 };
 
 /**
- * Safely eval a given redis script or it can be used as a setter of KEYS.
+ * Safely eval a given Redis script or it can be used as a setter of KEYS.
  * Because attempting to parse the script can be a flakey.
  *
  * @param {Object} script
@@ -340,9 +343,9 @@ Leverage.seval = function seval(script, args) {
   }
 
   //
-  // Allow users to specify the amount of keys they are sendings for this
+  // Allow users to specify the amount of keys they are sending for this
   // script. If the script isn't to complicated we can actually parse out the
-  // value and the amount of keys/argvs for you.
+  // value and the amount of KEYS/ARGVS for you.
   //
   if ('number' === typeof args[0] && args[0] >= 0) {
     script.args.KEYS = keys = args.shift();
@@ -358,7 +361,7 @@ Leverage.seval = function seval(script, args) {
   //    that script was initialized when our constructor got initialised.
   //
   // 2. When we receive a NOERROR error we are going to re-load the script in
-  //    our cache and issue a regular eval in paralell so we still get our
+  //    our cache and issue a regular eval in parallel so we still get our
   //    results. This way the next call will be cached.
   //
   leverage._.client.send_command(
@@ -412,7 +415,7 @@ Leverage.error = function error(err, script) {
     , data = pattern.exec(err.message);
 
   //
-  // It's a regular error, it doesn't have to be re-created as a LUA based
+  // It's a regular error, it doesn't have to be re-created as a lua based
   // error.
   //
   if (!data) return err;
@@ -476,7 +479,7 @@ Leverage.introduce = function introduce(directory, obj) {
 
     //
     // Reset the function name to the name of the script which will hopefully
-    // improve stacktraces.
+    // improve stack traces.
     //
     obj[script.name].name = script.name;
   });
@@ -489,7 +492,7 @@ Leverage.introduce = function introduce(directory, obj) {
  * can properly execute it. Returns an object with the amount of KEYS and ARGV's
  * we've detected in the script.
  *
- * @param {String} lua LUA code snippet
+ * @param {String} lua lua code snippet
  * @returns {Object}
  * @api private
  */

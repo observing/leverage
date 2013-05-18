@@ -1,8 +1,8 @@
 # leverage
 
-Leverage is an abstraction on top of the fabilous `redis` client for Node.js. It
-makes it much easier to work with lua scripting in redis as well as provide some
-some missing features in redis through the power of lua scripting.
+Leverage is an abstraction on top of the fabulous `redis` client for Node.js. It
+makes it much easier to work with lua scripting in Redis as well as provide some
+some missing features in Redis through the power of lua scripting.
 
 ### Installation
 
@@ -43,7 +43,7 @@ forbidden chars, numbers from your script name and transform it to lowercase.
 [EE]: http://nodejs.org/api/events.html#events_class_events_eventemitter
 [EEprivate]: https://github.com/joyent/node/blob/master/lib/events.js#L26-L37
 
-To initialize the module you need to provide it with atleast one active redis
+To initialize the module you need to provide it with at least one active Redis
 connection:
 
 ```js
@@ -53,7 +53,7 @@ var Leverage = require('leverage')
 var leverage = new Leverage(redis, { optional options });
 ```
 
-If you want to leverage the improved Pub/Sub capablities you should supply 2
+If you want to leverage the improved Pub/Sub capabilities you should supply 2
 different clients. 1 connection will be used to publish the messages and execute
 the commands while the other connection will be used to subscribe and there for
 block the connection for writing.
@@ -108,7 +108,7 @@ parse the script to automatically detect how many keys that should be send to
 the server. If your code isn't to magical it should just parse it correctly and
 set the amount of KEYS and ARGV's of your script. There might be edge cases
 where you are iterating over the keys and args or we just fail to correctly
-parse your lua code because you a frigging lua wizzard. For these edge cases you
+parse your lua code because you a frigging lua wizard. For these edge cases you
 can supply every generated method with a number. This number should represent
 the amount of KEYS you are sending to your scripts.
 
@@ -116,7 +116,7 @@ the amount of KEYS you are sending to your scripts.
 leverage.customscript(2, 'KEY1', 'KEY2', 'ARGS', 'ARGS', fn);
 ```
 
-But doing this everytime can be a bit wastefull that's why you can also just
+But doing this every time can be a bit wasteful that's why you can also just
 tell us once and the module will memorize it for you so all other calls will
 just use the same amount of keys.
 
