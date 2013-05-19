@@ -15,10 +15,14 @@ local retrieve = assert(tonumber(ARGV[1]), 'The retrieve amount is missing or Na
 -- retrieve.
 --
 local id = tonumber(redis.call('get', namespace ..'::'.. channel ..'::msg-id')) or 0
-local mget = {}
+local messages = {}
 
-for i = id, retrieve, -1 do
-  table.insert(mget, namespace ..'::'.. channel ..'::backlog::'.. id)
+if retrieve > 0 then
+  for i = id, retrieve, -1 do
+    table.insert(messages, namespace ..'::'.. channel ..'::backlog::'.. id)
+  end
+
+  messages = redis.call('mget', unpack(messages))
 end
 
 --
@@ -26,5 +30,5 @@ end
 --
 return cjson.encode({
   id       = id,
-  messages = redis.call('mget', unpack(mget))
+  messages = messages
 })

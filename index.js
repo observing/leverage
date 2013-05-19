@@ -188,25 +188,70 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     , bailout = options.bailout || false
     , replay = options.replay || 10
     , queue = []
-    , id = 0;
+    , id = -1;
 
   /**
    * Check if we need queue messages or can pass them directly to the connected
    * client.
    *
+   * TODO:
+   * - Indicate when the queue needs to be flushed
+   * - Determin when messages are our sync and howmany/which should be retrieved
+   * - Implement bailout
+   *
    * @param {Object} packet Message packet
    * @api private
    */
   function queueorsend(packet) {
+    //
+    // Make sure that the package can be parsed properly.
+    //
+    if ('string' === typeof packet) {
+      try { packet = JSON.parse(packet); }
+      catch (e) { return leverage.emit(channel +'::error', e); }
+    }
+
+    //
+    // We don't have an id yet, which means we haven't received data yet from
+    // our `leveragejoin` method. It doesn't matter if the data should be
+    // ordered or not, we just want to wait for something to be received.
+    //
+    if (id === -1) return queue.push(packet);
+
+    //
+    // Check if the id is in order.
+    //
+    if ((id + 1) !== +packet.id) {
+      //
+      // Figure out the difference in id's so we know howmany to fetch to make
+      // it receive all the right packages.
+      //
+      if (ordered) return;
+    }
+
+    //
+    // We have messages queued, we so we should process them all before
+    // continuing with the rest of the messages.
+    //
+    if (queue.length) {
+      var messages = queue.splice(0).sort(function (a, b) {
+        return +a.id - b.id;
+      });
+
+      messages.forEach(queueorsend);
+    }
 
     //
     // The message is in order, increase the id to the latest id and emit the
     // message.
     //
     id = +packet.id;
-    leverage.emit(channel + '::message', packet.message);
+    leverage.emit(channel +'::message', packet.message, packet.id);
   }
 
+  //
+  // Fetch the current id from the database as well as any older messages.
+  //
   this.leveragejoin(channel, replay, function join(err, data) {
     if (err) console.log(err.message, err.stack);
 
@@ -216,9 +261,6 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
 
   this._.sub.subscribe(this._.namespace +'::'+ channel);
   this._.sub.on('message', function message(namespace, packet) {
-    try { packet = JSON.parse(packet); }
-    catch (e) { return leverage.emit(channel +'::error', e); }
-
     queueorsend(packet);
   });
 
