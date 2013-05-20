@@ -194,16 +194,18 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
    * An error has occured so we might need to unsubscribe if we are in a bailout
    * position.
    *
-   * @param {Error} e
+   * @param {Error} e The error message
+   * @returns {Boolean} false
    * @api private
    */
   function unsubscribemaybe(e) {
     leverage.emit(channel +'::error', e);
 
-    if (!bailout) return;
+    if (!bailout) return false;
 
     leverage.emit(channel +'::bailout', e);
-    return leverage.unsubscribe(channel);
+    leverage.unsubscribe(channel);
+    return false;
   }
 
   /**
@@ -219,6 +221,8 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
    * @api private
    */
   function queueorsend(packet) {
+    if (!packet) return false;
+
     //
     // Make sure that the package can be parsed properly.
     //
@@ -232,7 +236,10 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     // our `leveragejoin` method. It doesn't matter if the data should be
     // ordered or not, we just want to wait for something to be received.
     //
-    if (id === -1) return queue.push(packet);
+    if (id === -1) {
+      queue.push(packet);
+      return true;
+    }
 
     //
     // Check if the id is in order.
@@ -242,7 +249,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
       // Figure out the difference in id's so we know howmany to fetch to make
       // it receive all the right packages.
       //
-      if (ordered) return;
+      if (ordered) return true;
     }
 
     //
@@ -263,6 +270,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     //
     id = +packet.id;
     leverage.emit(channel +'::message', packet.message, packet.id);
+    return true;
   }
 
   //
