@@ -18,8 +18,11 @@ local id = tonumber(redis.call('get', namespace ..'::'.. channel ..'::msg-id')) 
 local messages = {}
 
 if retrieve > 0 then
-  for i = id, retrieve, -1 do
-    table.insert(messages, namespace ..'::'.. channel ..'::backlog::'.. id)
+  local position = id - retrieve
+
+  while position <= id do 
+    table.insert(messages, namespace ..'::'.. channel ..'::backlog::'.. position)
+    position = position + 1
   end
 
   messages = redis.call('mget', unpack(messages))
