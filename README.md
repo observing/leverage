@@ -32,6 +32,7 @@ on the prototype:
 - `readyState` Which indicates if everything is loaded correctly.
 - `publish` For our improved Pub/Sub.
 - `subscribe` For our improved Pub/Sub.
+- `unsubscribe` Unsubscribe from our Pub/Sub channel.
 - `destroy` For closing all used/wrapped Redis connections.
 - [All EventEmitter methods][EE] and [it's private properties][EEprivate]
 

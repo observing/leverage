@@ -191,6 +191,22 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     , id = -1;
 
   /**
+   * An error has occured so we might need to unsubscribe if we are in a bailout
+   * position.
+   *
+   * @param {Error} e
+   * @api private
+   */
+  function unsubscribemaybe(e) {
+    leverage.emit(channel +'::error', e);
+
+    if (!bailout) return;
+
+    leverage.emit(channel +'::bailout', e);
+    return leverage.unsubscribe(channel);
+  }
+
+  /**
    * Check if we need queue messages or can pass them directly to the connected
    * client.
    *
@@ -208,7 +224,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     //
     if ('string' === typeof packet) {
       try { packet = JSON.parse(packet); }
-      catch (e) { return leverage.emit(channel +'::error', e); }
+      catch (e) { return unsubscribemaybe(e); }
     }
 
     //
@@ -252,11 +268,16 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   //
   // Fetch the current id from the database as well as any older messages.
   //
-  this.leveragejoin(channel, replay, function join(err, data) {
-    if (err) console.log(err.message, err.stack);
+  this.leveragejoin(channel, replay, function join(err, packet) {
+    if (err) return unsubscribemaybe(err);
 
-    id = +data.id;
-    data.messages.forEach(queueorsend.bind(this));
+    if ('string' === typeof packet) {
+      try { packet = JSON.parse(packet); }
+      catch (e) { return unsubscribemaybe(e); }
+    }
+
+    id = +packet.id;
+    packet.messages.forEach(queueorsend);
   });
 
   this._.sub.subscribe(this._.namespace +'::'+ channel);
@@ -268,6 +289,17 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
 };
 
 /**
+ * Unsubscribe from a channel.
+ *
+ * @param {String} channel The channel we wish to unsubscribe from.
+ * @api public
+ */
+Leverage.prototype.unsubscribe = function unsubscribe(channel) {
+  this._.sub.unsubscribe(this._.namespace +'::'+ channel);
+  return this;
+};
+
+/**
  * Destroy leverage and it's attached Redis connections.
  *
  * @api private
@@ -275,6 +307,8 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
 Leverage.prototype.destroy = function destroy() {
   if (this.client) this.client.quit();
   if (this.sub) this.sub.quit();
+
+  return this;
 };
 
 /**
@@ -300,6 +334,8 @@ Leverage.load = function load() {
       }
     });
   });
+
+  return this;
 };
 
 /**
