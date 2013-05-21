@@ -89,6 +89,7 @@ describe('lua', function () {
     });
 
     it('should reset the counter if it exceeds the backlog');
+
     it('should automatically expire the set messages from the backlog');
   });
 

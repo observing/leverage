@@ -240,26 +240,30 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     }
 
     //
-    // Check if the id is in order.
+    // Check if the id is in order or if we need to fetch some more data.
     //
-    if ((id + 1) !== +packet.id) {
+    if ((id + 1) !== packet.id) {
       //
-      // Figure out the difference in id's so we know howmany to fetch to make
-      // it receive all the right packages.
+      // The message was previously queued and it didn't match our id and it's
+      // already fetched so we don't need to retrieve it anymore
       //
-      if (ordered) return true;
-    }
+      if (packet.queued) {
+        queue.push(packet);
+        return true;
+      }
 
-    //
-    // We have messages queued, we so we should process them all before
-    // continuing with the rest of the messages.
-    //
-    if (queue.length) {
-      var messages = queue.splice(0).sort(function (a, b) {
-        return +a.id - b.id;
+      //
+      // TODO: register that this item is beein fetched
+      //
+      leverage.leveragefetch(channel, id, id + 1, function next(err, data) {
+        if (err) return unsubscribemaybe(err);
+        if (!data) return;
+
+        if (Array.isArray(data)) return data.forEach(queueorsend);
+        queueorsend(data);
       });
 
-      messages.forEach(queueorsend);
+      return true;
     }
 
     //
@@ -268,6 +272,27 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     //
     id = +packet.id;
     leverage.emit(channel +'::message', packet.message, packet.id);
+
+    //
+    // We have messages queued, now that we've successfully send the message we
+    // probably want to try and resend all of these messages and hope that we
+    // we've restored the reliability again.
+    //
+    if (queue.length) {
+      var messages = queue.splice(0).sort(function (a, b) {
+        return a.id - b.id;
+      });
+
+      //
+      // We might want to indicate that these are already queued, so we don't
+      // fetch data again.
+      //
+      messages.map(function map(packet) {
+        packet.queued = true;
+        return packet;
+      }).forEach(queueorsend);
+    }
+
     return true;
   }
 
