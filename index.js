@@ -184,9 +184,9 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   // bailout: Should we unsubscribe from the channel if we cannot maintain or
   //          guarantee the reliability.
   //
-  var ordered = options.ordered || false
-    , bailout = options.bailout || false
-    , replay = options.replay || 10
+  var ordered = 'ordered' in options ? options.ordered : false
+    , bailout = 'bailout' in options ? options.bailout : false
+    , replay =  'replay'  in options ? options.replay  : 10
     , queue = []
     , id = -1;
 
@@ -213,9 +213,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
    * client.
    *
    * TODO:
-   * - Indicate when the queue needs to be flushed
    * - Determin when messages are our sync and howmany/which should be retrieved
-   * - Implement bailout
    *
    * @param {Object} packet Message packet
    * @api private
@@ -292,7 +290,12 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     }
 
     id = +packet.id;
-    packet.messages.forEach(queueorsend);
+
+    //
+    // lua edgecase it can return an object instead of an array ._. when it's
+    // empty, yay.
+    //
+    if (Array.isArray(packet.messages)) packet.messages.forEach(queueorsend);
   });
 
 
