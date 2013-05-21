@@ -146,6 +146,7 @@ system.
       happening. It defaults to <code>leverage</code>
     </p>
   </dd>
+
   <dt>SHA1<dt>
   <dd>
     <p>
@@ -155,6 +156,7 @@ system.
       find out of the script has been loaded in the internal cache.
     </p>
   </dd>
+
   <dt>backlog</dt>
   <dd>
     <p>
@@ -165,6 +167,7 @@ system.
       storing to much messages it will automatically override older keys.
     </p>
   </dd>
+
   <dt>expire</dt>
   <dd>
     <p>

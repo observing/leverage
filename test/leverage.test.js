@@ -1,48 +1,11 @@
 describe('Leverage', function () {
   'use strict';
 
-  var Leverage = require('../')
-    , chai = require('chai')
-    , expect = chai.expect;
-
-  //
-  // Include the damned stacktraces when shit breaks.
-  //
-  chai.Assertion.includeStack = true;
-
-  /**
-   * Generate a new Redis client.
-   *
-   * @returns {Redis} The pre-configured redis client.
-   * @api private
-   */
-  function redis() {
-    var client = require('redis').createClient(
-      +process.env.REDIS_PORT || 6379,          // Read the port from the ENV vars
-      +process.env.REDIS_HOST || '127.0.0.1'    // Read the host from the ENV vars
-    );
-
-    //
-    // Authenticate when needed.
-    //
-    if (process.env.REDIS_AUTH) client.auth(process.env.REDIS_AUTH);
-
-    return client;
-  }
-
-  /**
-   * Generate a pre-wrapped leverage instance.
-   *
-   * @param {Boolean} pubsub Generate pubsub.
-   * @param {Object} options Options for Leverage.
-   * @api private
-   */
-  function leverage(pubsub, options) {
-    options = options || {};
-
-    if (pubsub) return new Leverage(redis(), redis(), options);
-    return new Leverage(redis(), options);
-  }
+  var common   = require('./common')
+    , Leverage = common.Leverage
+    , leverage = common.leverage
+    , expect   = common.expect
+    , redis    = common.redis;
 
   it('correctly applies the given options', function (done) {
     var client = redis();
@@ -68,7 +31,7 @@ describe('Leverage', function () {
   });
 
   it('exposes the generated scripts', function () {
-    expect(Leverage.scripts).to.have.length(2);
+    expect(Leverage.scripts).to.have.length(3);
   });
 
   it('sets the readyState and emits readystatechange events', function (done) {

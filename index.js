@@ -273,8 +273,15 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     return true;
   }
 
+  this._.sub.subscribe(this._.namespace +'::'+ channel);
+  this._.sub.on('message', function message(namespace, packet) {
+    queueorsend(packet);
+  });
+
   //
-  // Fetch the current id from the database as well as any older messages.
+  // Fetch the current id from the database as well as any older messages. Do
+  // this after we've send a subscription command so we can retrieve some
+  // backlog and "HOPE" that we've given our self enough time to retrieve data
   //
   this.leveragejoin(channel, replay, function join(err, packet) {
     if (err) return unsubscribemaybe(err);
@@ -288,10 +295,6 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     packet.messages.forEach(queueorsend);
   });
 
-  this._.sub.subscribe(this._.namespace +'::'+ channel);
-  this._.sub.on('message', function message(namespace, packet) {
-    queueorsend(packet);
-  });
 
   return this;
 };
