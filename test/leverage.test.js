@@ -31,7 +31,7 @@ describe('Leverage', function () {
   });
 
   it('exposes the generated scripts', function () {
-    expect(Leverage.scripts).to.have.length(3);
+    expect(Leverage.scripts).to.have.length(2);
   });
 
   it('sets the readyState and emits readystatechange events', function (done) {
@@ -106,7 +106,7 @@ describe('Leverage', function () {
       var client = leverage()
         , template = 'namespace: {leverage::namespace}, backlog: {leverage::backlog}, expire: {leverage::expire}';
 
-      expect(client._.prepare(template)).to.equal('namespace: leverage, backlog: 10000, expire: 1000');
+      expect(client._.prepare(template)).to.equal('namespace: leverage, backlog: 100000, expire: 1000');
       client.destroy();
     });
 
