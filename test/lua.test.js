@@ -93,11 +93,6 @@ describe('lua', function () {
     it('should automatically expire the set messages from the backlog');
   });
 
-  describe('range', function () {
-    it('should fetch the results for the given channel');
-    it('fetches the items in the specified range');
-  });
-
   describe('subscribe', function () {
     it('should retrieve the current id');
     it('should retrieve the specified amount of channel messages');
