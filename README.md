@@ -183,6 +183,68 @@ system.
   </dd>
 </dl>
 
+### Pub/Sub
+
+Our Pub/Sub wrapper provides a reliable Pub/Sub implementation on top of the
+fire and forget Pub/Sub implementation of redis. This is done by leveraging (ooh
+see what I did there ;)) lua scripts.
+
+```js
+leverage.publish(message, function (err, id) {
+  // optional error and the unique id of the message
+});
+```
+
+When we publish a message the following events take place:
+
+1. We increase a unique counter for the given channel so we have a unique `id`
+   for the message.
+2. Create a `packet` which contains the message and the id of the message.
+3. The package is stored as simple key/value where they key contains the channel
+   and the unique `id`.
+4. The packet is published to the channel.
+
+All these operations happen atomicly and are namespaced under the namespace that
+you configured `Leverage` with.
+
+When you join a channel the follwing events take place:
+
+1. The current id is retrieved.
+2. Older messages are retrieved if needed
+3. A packet is send back which contains all fetched messages and the current id.
+
+The subscription command can be configured with:
+
+<dl>
+  <dt>ordered<dt>
+  <dd>
+    <p>
+      Force ordered delivery of messages. If a message is dropped all received
+      messages will be queued until the missing message is retrieved again and
+      then the queue is flushed again. Defaults to <code>false</code>.
+    </p>
+  </dd>
+
+  <dt>bailout</dt>
+  <dd>
+    <p>
+      When we received an error while processing and receiving messages we can
+      stop the subscription as we can no longer guarantee so the sensible thing
+      to do would be giving up and unsubscribing from the channel and stop with
+      all processing. Defaults to <code>true</code>.
+    </p>
+  </dd>
+
+  <dt>replay</dt>
+  <dd>
+    <p>
+      How many events should we retrieve when we join the channel for the first
+      time as it might happen that we've received a message right before we
+      subscribed. Defaults to <code>0</code>.
+    </p>
+  </dd>
+</dl>
+
 ## LICENSE
 
 MIT
