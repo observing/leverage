@@ -258,6 +258,8 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
    * @api private
    */
   function allowed(packet) {
+    if (!packet) return false;
+
     if (!uv.received(packet.id) && ordered) {
       queue.push(packet);
       return false;
