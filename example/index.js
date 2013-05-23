@@ -53,10 +53,44 @@ var leverage = new Leverage(
   redis.createClient(port, host)
 );
 
-leverage.subscribe('channel').on('channel::message', function message(msg, pid) {
+var missing = {}
+  , tracked;
+
+leverage.subscribe('channel', {
+  ordered: 'ordered' in argh ? argh.ordered : false,
+  replay:  'replay'  in argh ? argh.replay  : 0
+}).on('channel::message', function message(msg, pid) {
+  if (id && id + 1 !== pid) {
+    console.log('The process has gone out of sync and is missing %d messages', pid - id);
+    console.log('The last id received was %d but ive been given %d', id, pid);
+
+    //
+    // Track messages that were missing
+    //
+    if (!tracked) {
+      var now = id;
+      tracked = true;
+
+      while (now !== pid) {
+        missing[++now] = true;
+      }
+    }
+  }
+
   id = pid;
 
   if (id % 10 === 0) console.log('Received %d messages through Pub/Sub', pid);
+
+  if (Object.keys(missing).length) {
+    delete missing[pid];
+
+    if (!Object.keys(missing).length) {
+      console.log('Received all messages from when our process went out of sync');
+      tracked = false;
+    } else {
+      console.log('Missing', missing);
+    }
+  }
 });
 
 //
