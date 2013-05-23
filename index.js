@@ -192,59 +192,54 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     , queue = [];
 
   /**
-   * An error has occurred so we might need to unsubscribe if we are in a bailout
-   * position.
+   * Bailout and cancel all the things
    *
-   * @param {Error} e The error message
-   * @returns {Boolean} false
+   * @param {Errorr} Err The error that occured
    * @api private
    */
-  function unsubscribemaybe(e) {
-    leverage.emit(channel +'::error', e);
+  function failed(err) {
+    leverage.emit(channel +'::error', err);
 
-    if (!bailout) return false;
+    if (!bailout) return;
 
-    leverage.emit(channel +'::bailout', e);
+    leverage.emit(channel +'::bailout', err);
     leverage.unsubscribe(channel);
     uv.removeAllListeners();
-
-    return false;
+    queue.length = 0;
   }
 
   /**
-   * Check if we need queue messages or can pass them directly to the connected
-   * client.
+   * Parse the packet.
    *
-   * @param {Object} packet Message packet.
+   * @param {String} packet The encoded message.
+   * @returns {Object}
    * @api private
    */
-  function queueorsend(packet) {
-    if (!packet) return false;
+  function parse(packet) {
+    if ('object' === typeof packet) return packet;
 
-    //
-    // Make sure that the package can be parsed properly.
-    //
-    if ('string' === typeof packet) {
-      try { packet = JSON.parse(packet); }
-      catch (e) { return unsubscribemaybe(e); }
-    }
+    try { return JSON.parse(packet); }
+    catch (e) { return failed(e); }
+  }
 
-    //
-    // The message is not in order or not expected we should be queueing all
-    // messages until we received the correct packet.
-    //
-    if (!uv.received(packet.id) && ordered) return queue.push(packet);
-
-    //
-    // The message is in order.
-    //
+  /**
+   * Emit the package and process the queue if we've build one.
+   *
+   * @param {Object} packet The message packet.
+   * @api private
+   */
+  function emit(packet) {
     leverage.emit(channel +'::message', packet.message, packet.id);
+  }
 
-    //
-    // We have messages queued, now that we've successfully send the message we
-    // probably want to try and resend all of these messages and hope that we
-    // we've restored the reliability again.
-    //
+  /**
+   * We have messages queued, now that we've successfully send the message we
+   * probably want to try and resend all of these messages and hope that we
+   * we've restored the reliability again.
+   *
+   * @api private
+   */
+  function flush() {
     if (queue.length) {
       //
       // We might want to indicate that these are already queued, so we don't
@@ -252,11 +247,62 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
       //
       queue.splice(0).sort(function sort(a, b) {
         return a.id - b.id;
-      }).forEach(queueorsend);
+      }).forEach(onmessage);
+    }
+  }
+
+  /**
+   * Checks if we are allowed to emit the message.
+   *
+   * @param {Object} packet The message packet.
+   * @api private
+   */
+  function allowed(packet) {
+    if (!uv.received(packet.id) && ordered) {
+      queue.push(packet);
+      return false;
     }
 
     return true;
   }
+
+  /**
+   * Handle incomming messages.
+   *
+   * @param {String} packet The message
+   * @api private
+   */
+  function onmessage(packet) {
+    if (arguments.length === 2) packet = arguments[1];
+    packet = parse(packet);
+
+    if (allowed(packet)) emit(packet);
+  }
+
+  //
+  // Fetch the current id from the database as well as any older messages. Do
+  // this after we've send a subscription command so we can retrieve some
+  // backlog and "HOPE" that we've given our self enough time to retrieve data.
+  //
+  this.leveragejoin(channel, replay, function join(err, packet) {
+    if (err) return failed(err);
+    packet = parse(packet);
+
+    //
+    // Set the cursor to the received package.
+    //
+    uv.initialize(packet.id);
+
+    //
+    // lua edge case it can return an object instead of an array ._. when it's
+    // empty, yay.
+    //
+    if (Array.isArray(packet.messages)) {
+      packet.messages.map(parse).forEach(emit);
+    }
+
+    flush();
+  });
 
   //
   // Fetch missing packets.
@@ -270,14 +316,14 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
       processing(true);
 
       if (err || !data) {
-        return unsubscribemaybe(err || new Error('No data retrieved from fetching'));
+        return failed(err || new Error('No data retrieved from fetching'));
       }
 
       if (Array.isArray(data)) {
-        data.forEach(queueorsend);
-      } else {
-        queueorsend(data);
+        data.map(parse).filter(allowed).forEach(emit);
       }
+
+      flush();
     });
   });
 
@@ -285,37 +331,11 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   // Subscribe to the actual channel and attach a message processor.
   //
   this._.sub.subscribe(_.namespace +'::'+ channel);
-  this._.sub.on('message', function message(namespace, packet) {
-    queueorsend(packet);
-  });
-
-  //
-  // Fetch the current id from the database as well as any older messages. Do
-  // this after we've send a subscription command so we can retrieve some
-  // backlog and "HOPE" that we've given our self enough time to retrieve data.
-  //
-  this.leveragejoin(channel, replay, function join(err, packet) {
-    if (err) return unsubscribemaybe(err);
-
-    if ('string' === typeof packet) {
-      try { packet = JSON.parse(packet); }
-      catch (e) { return unsubscribemaybe(e); }
-    }
-
-    //
-    // Set the cursor to the received package.
-    //
-    uv.initialize(packet.id);
-
-    //
-    // lua edge case it can return an object instead of an array ._. when it's
-    // empty, yay.
-    //
-    if (Array.isArray(packet.messages)) packet.messages.forEach(queueorsend);
-  });
+  this._.sub.on('message', onmessage);
 
   return this;
 };
+
 
 /**
  * Unsubscribe from a channel.
