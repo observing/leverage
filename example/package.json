@@ -1,0 +1,18 @@
+{
+  "name": "example",
+  "version": "0.0.0",
+  "description": "Simple pub/sub example using Leverage",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": "",
+  "keywords": [
+    "example"
+  ],
+  "author": "Arnout Kazemier <opensource@observe.it>",
+  "license": "MIT",
+  "dependencies": {
+    "argh": "0.0.1"
+  }
+}
