@@ -186,8 +186,8 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   // bailout: Should we unsubscribe from the channel if we cannot maintain or
   //          guarantee the reliability.
   //
-  var ordered = 'ordered' in options ? options.ordered : false
-    , bailout = 'bailout' in options ? options.bailout : false
+  var ordered = 'ordered' in options ? !!options.ordered : false
+    , bailout = 'bailout' in options ? options.bailout : true
     , replay =  'replay'  in options ? options.replay  : 10
     , queue = [];
 
@@ -265,12 +265,13 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     processing();
 
     _.client.mget(missing.map(function namespace(id) {
-      return _.namespace +'::'+ channel +'::backlog'+ id;
+      return _.namespace +'::'+ channel +'::backlog::'+ id;
     }), function next(err, data) {
       processing(true);
 
-      if (err) return unsubscribemaybe(err);
-      if (!data) return;
+      if (err || !data) {
+        return unsubscribemaybe(err || new Error('No data retrieved from fetching'));
+      }
 
       if (Array.isArray(data)) {
         data.forEach(queueorsend);
@@ -302,7 +303,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     }
 
     //
-    // Set the cursor to the received package
+    // Set the cursor to the received package.
     //
     uv.initialize(packet.id);
 
@@ -312,7 +313,6 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     //
     if (Array.isArray(packet.messages)) packet.messages.forEach(queueorsend);
   });
-
 
   return this;
 };
