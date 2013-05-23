@@ -215,7 +215,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
    * Check if we need queue messages or can pass them directly to the connected
    * client.
    *
-   * @param {Object} packet Message packet
+   * @param {Object} packet Message packet.
    * @api private
    */
   function queueorsend(packet) {
@@ -282,7 +282,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   });
 
   //
-  // Subscribe to the actual channel and attach a message processor
+  // Subscribe to the actual channel and attach a message processor.
   //
   this._.sub.subscribe(_.namespace +'::'+ channel);
   this._.sub.on('message', function message(namespace, packet) {
@@ -292,7 +292,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   //
   // Fetch the current id from the database as well as any older messages. Do
   // this after we've send a subscription command so we can retrieve some
-  // backlog and "HOPE" that we've given our self enough time to retrieve data
+  // backlog and "HOPE" that we've given our self enough time to retrieve data.
   //
   this.leveragejoin(channel, replay, function join(err, packet) {
     if (err) return unsubscribemaybe(err);
