@@ -30,6 +30,6 @@
     "pre-commit": "0.0.x"
   },
   "dependencies": {
-    "underverse": "0.0.x"
+    "underverse": "0.1.x"
   }
 }
