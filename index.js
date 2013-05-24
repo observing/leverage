@@ -291,6 +291,12 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     packet = parse(packet);
 
     //
+    // We're ready and starting processing the subscriptions and published
+    // messages.
+    //
+    leverage.emit(channel +'::online', packet.id);
+
+    //
     // lua edge case it can return an object instead of an array ._. when it's
     // empty, yay.
     //
