@@ -1,6 +1,6 @@
 {
   "name": "leverage",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Leverage the awesome power of lua scripting through redis",
   "main": "index.js",
   "scripts": {

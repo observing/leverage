@@ -189,13 +189,19 @@ Our Pub/Sub wrapper provides a reliable Pub/Sub implementation on top of the
 fire and forget Pub/Sub implementation of redis. This is done by leveraging (ooh
 see what I did there ;)) lua scripts.
 
+#### Publish
+
+Publishing is as easy as:
+
 ```js
-leverage.publish(message, function (err, id) {
+leverage.publish(channel, message, function (err, id) {
   // optional error and the unique id of the message
 });
 ```
 
-When we publish a message the following events take place:
+The callback is optional, but I would advice you to use it so you know which id
+your message has and if it was send without any issues. When you publish a
+message the following events take place:
 
 1. We increase a unique counter for the given channel so we have a unique `id`
    for the message.
@@ -204,14 +210,15 @@ When we publish a message the following events take place:
    and the unique `id`.
 4. The packet is published to the channel.
 
-All these operations happen atomicly and are namespaced under the namespace that
-you configured `Leverage` with.
+#### Subscribe
 
-When you join a channel the follwing events take place:
+The subscription command has a bit of different syntax then you are used to. It
+accepts a second argument which can be used to configure the reliablity of the
+Pub/Sub channel:
 
-1. The current id is retrieved.
-2. Older messages are retrieved if needed
-3. A packet is send back which contains all fetched messages and the current id.
+```js
+leverage.subscribe('channel', { options });
+```
 
 The subscription command can be configured with:
 
@@ -244,6 +251,53 @@ The subscription command can be configured with:
     </p>
   </dd>
 </dl>
+
+When you join a channel the follwing events take place:
+
+1. The current id is retrieved.
+2. Older messages are retrieved if needed
+3. A packet is send back which contains all fetched messages and the current id.
+
+Once you are subscribed to a channel the messages will be emitted on the
+`leverage` instance. There are 3 different events emitted:
+
+- `<channel>::message` A message has been received.
+- `<channel>::bailout` We've received an error and are bailing out.
+- `<channel>::error` The channel received an error.
+
+`<channel>` is the name of the channel that you've subscribed to.
+
+```js
+leverage.subscribe('foo').on('foo::message', function onmessage(message, id) {
+  console.log('Received the following message: ', message);
+  console.log('The message had the following id: ', id);
+});
+
+leverage.on('foo::bailout', function bailout(e) {
+  console.log('The following error caused the bailout', e);
+});
+
+leverage.on('foo::error', function error(e) {
+  console.log('We received an error', e);
+  console.log('This was emitted before a bailout, if bailouts were enabled');
+});
+```
+
+#### Unsubscribe
+
+Unsubscribe from the channel, nothing special here.
+
+```js
+leverage.unsubscribe('foo', function unsubscribed(err) {
+ ..
+});
+```
+
+#### Note:
+
+All these operations happen atomicly and are namespaced under the namespace that
+you configured `Leverage` with. So you cannot (and should not) publish to
+channels that are not wrapper by Leverage.
 
 ## LICENSE
 
