@@ -260,7 +260,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   function allowed(packet) {
     if (!packet) return false;
 
-    if (!uv.received(packet.id) && ordered) {
+    if (uv.position === 'inactive' || (!uv.received(packet.id) && ordered)) {
       queue.push(packet);
       return false;
     }
@@ -291,11 +291,6 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     packet = parse(packet);
 
     //
-    // Set the cursor to the received package.
-    //
-    uv.initialize(packet.id);
-
-    //
     // lua edge case it can return an object instead of an array ._. when it's
     // empty, yay.
     //
@@ -303,6 +298,10 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
       packet.messages.map(parse).forEach(emit);
     }
 
+    //
+    // Set the cursor to the received package.
+    //
+    uv.cursor(packet.id);
     flush();
   });
 
