@@ -188,7 +188,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   //
   var ordered = 'ordered' in options ? !!options.ordered : false
     , bailout = 'bailout' in options ? options.bailout : true
-    , replay =  'replay'  in options ? options.replay  : 10
+    , replay =  'replay'  in options ? options.replay  : 0
     , queue = [];
 
   /**
