@@ -188,7 +188,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   //
   var ordered = 'ordered' in options ? !!options.ordered : false
     , bailout = 'bailout' in options ? options.bailout : true
-    , replay =  'replay'  in options ? options.replay  : 0
+    , replay =  'replay'  in options ? options.replay  : 10
     , queue = [];
 
   /**
@@ -301,7 +301,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
     // empty, yay.
     //
     if (Array.isArray(packet.messages)) {
-      packet.messages.map(parse).forEach(emit);
+      packet.messages.map(parse).filter(Boolean).forEach(emit);
     }
 
     //
