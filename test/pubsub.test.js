@@ -8,6 +8,17 @@ describe('Leverage (reliable pubsub)', function () {
     , redis    = common.redis
     , kill     = common.kill;
 
+  it('should emit an `<channel>::online` event once the subscriber is ready', function (done) {
+    var pubsub = leverage(true);
+
+    pubsub.subscribe('meh').on('meh::online', function (id) {
+      expect(id).to.be.a('number');
+
+      pubsub.destroy();
+      done();
+    });
+  });
+
   describe('ordered', function () {
     it('maintains order when the subscription is dropped', function (done) {
       this.timeout(10000);
