@@ -348,10 +348,11 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
  * Unsubscribe from a channel.
  *
  * @param {String} channel The channel we wish to unsubscribe from.
+ * @param {Function} fn
  * @api public
  */
-Leverage.prototype.unsubscribe = function unsubscribe(channel) {
-  this._.sub.unsubscribe(this._.namespace +'::'+ channel);
+Leverage.prototype.unsubscribe = function unsubscribe(channel, fn) {
+  this._.sub.unsubscribe(this._.namespace +'::'+ channel, fn || noop);
   return this;
 };
 
