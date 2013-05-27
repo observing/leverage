@@ -189,7 +189,7 @@ Our Pub/Sub wrapper provides a reliable Pub/Sub implementation on top of the
 fire and forget Pub/Sub implementation of redis. This is done by leveraging (ooh
 see what I did there ;)) lua scripts.
 
-#### Publish
+#### leverage.publish(channel, message, [callback])
 
 Publishing is as easy as:
 
@@ -210,7 +210,7 @@ message the following events take place:
    and the unique `id`.
 4. The packet is published to the channel.
 
-#### Subscribe
+#### leverage.subscribe(channel, { options })
 
 The subscription command has a bit of different syntax then you are used to. It
 accepts a second argument which can be used to configure the reliablity of the
@@ -259,11 +259,13 @@ When you join a channel the follwing events take place:
 3. A packet is send back which contains all fetched messages and the current id.
 
 Once you are subscribed to a channel the messages will be emitted on the
-`leverage` instance. There are 3 different events emitted:
+`leverage` instance. There are a couple of different events emitted:
 
 - `<channel>::message` A message has been received.
 - `<channel>::bailout` We've received an error and are bailing out.
 - `<channel>::error` The channel received an error.
+- `<channel>::online` The channel has started processing messages.
+- `<channel>::unsubscribe` The channel has been unsubscribed.
 
 `<channel>` is the name of the channel that you've subscribed to.
 
@@ -283,7 +285,7 @@ leverage.on('foo::error', function error(e) {
 });
 ```
 
-#### Unsubscribe
+#### leverage.unsubscribe(channel, [callback])
 
 Unsubscribe from the channel, nothing special here.
 
@@ -292,6 +294,8 @@ leverage.unsubscribe('foo', function unsubscribed(err) {
  ..
 });
 ```
+
+This also triggers the `<channel>::unsubscribe` event.
 
 #### Note:
 
