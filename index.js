@@ -204,6 +204,14 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
 
     leverage.emit(channel +'::bailout', err);
     leverage.unsubscribe(channel);
+  }
+
+  /**
+   * Cleans up all references when we are unsubscribing.
+   *
+   * @api private
+   */
+  function cleanup() {
     uv.removeAllListeners();
     queue.length = 0;
   }
@@ -339,10 +347,10 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   //
   this._.sub.subscribe(_.namespace +'::'+ channel);
   this._.sub.on('message', onmessage);
+  this.once(channel +'::unsubscribe', cleanup);
 
   return this;
 };
-
 
 /**
  * Unsubscribe from a channel.
@@ -352,7 +360,13 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
  * @api public
  */
 Leverage.prototype.unsubscribe = function unsubscribe(channel, fn) {
-  this._.sub.unsubscribe(this._.namespace +'::'+ channel, fn || noop);
+  var booth = this;
+
+  this._.sub.unsubscribe(this._.namespace +'::'+ channel, function () {
+    booth.emit(channel +'::unsubscribe');
+    (fn || noop).apply(this, arguments);
+  });
+
   return this;
 };
 

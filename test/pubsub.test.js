@@ -8,60 +8,97 @@ describe('Leverage (reliable pubsub)', function () {
     , redis    = common.redis
     , kill     = common.kill;
 
-  it('should emit an `<channel>::online` event once the subscriber is ready', function (done) {
-    var pubsub = leverage(true);
+  describe('#subscribe', function () {
+    it('should emit an `<channel>::online` event once the subscriber is ready', function (done) {
+      var pubsub = leverage(true);
 
-    pubsub.subscribe('meh').on('meh::online', function (id) {
-      expect(id).to.be.a('number');
+      pubsub.subscribe('meh').on('meh::online', function (id) {
+        expect(id).to.be.a('number');
 
-      pubsub.destroy();
-      done();
+        pubsub.destroy();
+        done();
+      });
+    });
+
+    describe('ordered', function () {
+      it('maintains order when the subscription is dropped', function (done) {
+        this.timeout(10000);
+
+        var pubsub = leverage(true)
+          , timeout
+          , id = 0;
+
+        pubsub.subscribe('<channelname>', {
+          ordered: true,
+          replay: 0
+        }).on('<channelname>::message', function (msg, msgid) {
+          expect(msg).to.be.a('string');
+          expect(msgid).to.be.a('number');
+          expect(msg).to.equal('omg pubsub');
+
+          clearTimeout(timeout);
+
+          if (id && id + 1 !== msgid) {
+            throw new Error('The message are out of order');
+          }
+
+          timeout = setTimeout(function () {
+            throw new Error('Pub/Sub response was not received in a timely manner');
+          }, 500);
+        });
+
+        var publish = setInterval(function publish() {
+          pubsub.publish('<channelname>', 'omg pubsub');
+        }, 50);
+
+        setTimeout(function murder() {
+          kill('subscribe', function murdered(err) {
+            if (err) return done(err);
+
+            setTimeout(function alive() {
+              clearInterval(publish);
+              pubsub.destroy();
+
+              done();
+            }, 2000);
+          });
+        }, 2000);
+      });
     });
   });
 
-  describe('ordered', function () {
-    it('maintains order when the subscription is dropped', function (done) {
-      this.timeout(10000);
+  describe('#unsubscribe', function () {
+    it('should unsubscribe from the channel', function (done) {
+      var pubsub = leverage(true);
 
-      var pubsub = leverage(true)
-        , timeout
-        , id = 0;
+      pubsub.subscribe('really', { replay: 0 });
+      pubsub.once('really::online', function () {
+        pubsub.on('really::message', function (msg) {
+          expect(msg).to.equal('foo');
 
-      pubsub.subscribe('<channelname>', {
-        ordered: true,
-        replay: 0
-      }).on('<channelname>::message', function (msg, msgid) {
-        expect(msg).to.be.a('string');
-        expect(msgid).to.be.a('number');
-        expect(msg).to.equal('omg pubsub');
+          pubsub.unsubscribe('really', function (err) {
+            expect(err).to.not.be.instanceOf(Error);
 
-        clearTimeout(timeout);
-
-        if (id && id + 1 !== msgid) {
-          throw new Error('The message are out of order');
-        }
-
-        timeout = setTimeout(function () {
-          throw new Error('Pub/Sub response was not received in a timely manner');
-        }, 500);
-      });
-
-      var publish = setInterval(function publish() {
-        pubsub.publish('<channelname>', 'omg pubsub');
-      }, 50);
-
-      setTimeout(function murder() {
-        kill('subscribe', function murdered(err) {
-          if (err) return done(err);
-
-          setTimeout(function alive() {
-            clearInterval(publish);
-            pubsub.destroy();
-
-            done();
-          }, 2000);
+            pubsub.publish('really', 'bar', done);
+          });
         });
-      }, 2000);
+
+        pubsub.publish('really', 'foo');
+      });
+    });
+
+    it('should emit an `<channelname>::unsubscribe` event', function (done) {
+      var pubsub = leverage(true);
+
+      pubsub.subscribe('meh');
+      pubsub.once('meh::online', function () {
+        pubsub.once('meh::unsubscribe', done);
+        pubsub.unsubscribe('meh', function (err) {
+          expect(err).to.not.be.instanceOf(Error);
+
+          pubsub.destroy();
+        });
+      });
     });
   });
 });

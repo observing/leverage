@@ -1,7 +1,7 @@
 {
   "name": "leverage",
-  "version": "0.0.2",
-  "description": "Leverage the awesome power of lua scripting through redis",
+  "version": "0.0.3",
+  "description": "Leverage is a thin wrapper around the `redis` client that integrates your lua scripts as methods AND supports reliable and fault tolerant Pub/Sub on top of redis.",
   "main": "index.js",
   "scripts": {
     "test": "NODE_ENV=testing ./node_modules/.bin/mocha $(find test -name '*.test.js')"
