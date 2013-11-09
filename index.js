@@ -702,7 +702,7 @@ Leverage.parse = function parse(lua) {
  * @api private
  */
 Leverage.method = function method(file) {
-  return file.slice(0, -4).toLowerCase().replace(/[^a-z]/g, '');
+  return file.slice(0, -4).toLowerCase().replace(/[^a-z\d]/g, '');
 };
 
 //

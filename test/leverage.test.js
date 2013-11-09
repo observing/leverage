@@ -70,7 +70,7 @@ describe('Leverage', function () {
 
     it('removes dots, dashes, number and all other wierdshit', function () {
       var name = 'What Th3 fuck is-going.on.here.lua'
-        , out = 'whatthfuckisgoingonhere';
+        , out = 'whatth3fuckisgoingonhere';
 
       expect(Leverage.method(name)).to.equal(out);
     });
