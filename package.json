@@ -1,6 +1,6 @@
 {
   "name": "leverage",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Leverage is a thin wrapper around the `redis` client that integrates your lua scripts as methods AND supports reliable and fault tolerant Pub/Sub on top of redis.",
   "main": "index.js",
   "scripts": {
