@@ -447,7 +447,7 @@ Leverage.refresh = function reload(script, fn) {
     // parsed by the Redis client so we are using this flaky check.
     // See mranney/node_redis#436 for the reported issue.
     //
-    if ((Array.isArray(has) && has[0]) || has) {
+    if (has) if (has[0] !== 0 || !Array.isArray(has)) {
       leverage._.SHA1[script.name] = SHA1;
       return fn.call(this);
     }
