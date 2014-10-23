@@ -31,6 +31,9 @@
     "redis": "0.12.x"
   },
   "dependencies": {
+    "diagnostics": "0.0.x",
+    "eventemitter3": "0.1.x",
+    "fusing": "0.4.0",
     "underverse": "0.1.x"
   }
 }

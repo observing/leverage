@@ -1,7 +1,9 @@
 'use strict';
 
-var Underverse = require('underverse')
+var debug = require('diagnostics')('leverage')
+  , Underverse = require('underverse')
   , crypto = require('crypto')
+  , fuse = require('fusing')
   , path = require('path')
   , fs = require('fs');
 
@@ -17,7 +19,7 @@ var slice = Array.prototype.slice;
 function noop() {}
 
 /**
- * Leverage the awesome power of lua scripting.
+ * Leverage the awesome power of Lua scripting.
  *
  * @constructor
  * @param {Redis} client Redis client to publish the messages over.
@@ -25,7 +27,7 @@ function noop() {}
  * @param {Object} options Options.
  */
 function Leverage(client, sub, options) {
-  if (!(this instanceof Leverage)) return new Leverage(client, sub, options);
+  if (!this) return new Leverage(client, sub, options);
 
   //
   // Flakey detection if we got a options argument or an actual Redis client. We
@@ -124,7 +126,10 @@ function Leverage(client, sub, options) {
   this._.load();
 }
 
-Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
+//
+// Merge all the prototypes.
+//
+fuse(Leverage, require('eventemitter3'));
 
 /**
  * Returns the current readyState of the driver. It supports the following
@@ -142,15 +147,13 @@ Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
  *
  * @api private
  */
-Object.defineProperty(Leverage.prototype, 'readyState', {
-  get: function readyState() {
-    if (!this._.client) {
-      return 'uninitialized';
-    } else if (Object.keys(this._.SHA1).length !== this._.scripts.length) {
-      return 'loading';
-    } else {
-      return 'complete';
-    }
+Leverage.get('readyState',function readyState() {
+  if (!this._.client) {
+    return 'uninitialized';
+  } else if (Object.keys(this._.SHA1).length !== this._.scripts.length) {
+    return 'loading';
+  } else {
+    return 'complete';
   }
 });
 
@@ -162,9 +165,9 @@ Object.defineProperty(Leverage.prototype, 'readyState', {
  * @param {Function} fn The callback function.
  * @api public
  */
-Leverage.prototype.publish = function publish(channel, message, fn) {
+Leverage.readable('publish', function publish(channel, message, fn) {
   return this.leveragesend(channel, message, fn || noop);
-};
+});
 
 /**
  * Subscribe to our highly reliable message queue. All messages are emitted
@@ -178,7 +181,7 @@ Leverage.prototype.publish = function publish(channel, message, fn) {
  * @param {Object} options Subscription options.
  * @api public
  */
-Leverage.prototype.subscribe = function subscribe(channel, options) {
+Leverage.readable('subscribe', function subscribe(channel, options) {
   options = options || {};
 
   var uv = new Underverse(this._.backlog)
@@ -360,16 +363,16 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   this.once(channel +'::unsubscribe', cleanup);
 
   return this;
-};
+});
 
 /**
  * Unsubscribe from a channel.
  *
  * @param {String} channel The channel we wish to unsubscribe from.
- * @param {Function} fn
+ * @param {Function} fn Optionsal completion callback
  * @api public
  */
-Leverage.prototype.unsubscribe = function unsubscribe(channel, fn) {
+Leverage.readable('unsubscribe', function unsubscribe(channel, fn) {
   var booth = this;
 
   this._.sub.unsubscribe(this._.namespace +'::'+ channel, function () {
@@ -378,19 +381,20 @@ Leverage.prototype.unsubscribe = function unsubscribe(channel, fn) {
   });
 
   return this;
-};
+});
 
 /**
  * Destroy leverage and it's attached Redis connections.
  *
- * @api private
+ * @returns {Leverage}
+ * @api public
  */
-Leverage.prototype.destroy = function destroy() {
+Leverage.readable('destroy', function destroy() {
   if (this.client) this.client.quit();
   if (this.sub) this.sub.quit();
 
   return this;
-};
+});
 
 /**
  * Load all the lua scripts from the lua directory which should be loaded in to
