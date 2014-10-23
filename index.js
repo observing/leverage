@@ -121,9 +121,7 @@ function Leverage(client, sub, options) {
     throw new Error('The pub and sub clients should separate connections');
   }
 
-  if (Object.keys(this._.SHA1) !== Leverage.scripts.length) {
-    this._.load();
-  }
+  this._.load();
 }
 
 Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
