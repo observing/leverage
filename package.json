@@ -24,10 +24,11 @@
   "author": "Arnout Kazemier <opensource@observe.it>",
   "license": "MIT",
   "devDependencies": {
-    "chai": "1.6.x",
-    "mocha": "1.9.x",
-    "redis": "0.8.x",
-    "pre-commit": "0.0.x"
+    "chai": "1.9.x",
+    "istanbul": "0.3.x",
+    "mocha": "2.0.x",
+    "pre-commit": "0.0.x",
+    "redis": "0.12.x"
   },
   "dependencies": {
     "underverse": "0.1.x"
