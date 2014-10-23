@@ -29,7 +29,7 @@ function Leverage(client, sub, options) {
 
   //
   // Flakey detection if we got a options argument or an actual Redis client. We
-  // could do an instanceof RedisClient check but I don't want to have Redis as
+  // could do an instanceOf RedisClient check but I don't want to have Redis as
   // a dependency of this module.
   //
   if ('object' === typeof sub && !options && !sub.send_command) {
@@ -62,6 +62,13 @@ function Leverage(client, sub, options) {
     //
     SHA1: {
       value: options.SHA1 || Object.create(null)
+    },
+
+    //
+    // Stores the scripts that we're currently using in Leverage
+    //
+    scripts: {
+      value: Leverage.scripts.slice(),
     },
 
     //
@@ -114,7 +121,9 @@ function Leverage(client, sub, options) {
     throw new Error('The pub and sub clients should separate connections');
   }
 
-  if (Object.keys(this._.SHA1) !== Leverage.scripts.length) this._.load();
+  if (Object.keys(this._.SHA1) !== Leverage.scripts.length) {
+    this._.load();
+  }
 }
 
 Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
@@ -137,10 +146,13 @@ Leverage.prototype.__proto__ = require('events').EventEmitter.prototype;
  */
 Object.defineProperty(Leverage.prototype, 'readyState', {
   get: function readyState() {
-    if (!this._.client) return 'uninitialized';
-    if (Object.keys(this._.SHA1).length !== Leverage.scripts.length) return 'loading';
-
-    return 'complete';
+    if (!this._.client) {
+      return 'uninitialized';
+    } else if (Object.keys(this._.SHA1).length !== this._.scripts.length) {
+      return 'loading';
+    } else {
+      return 'complete';
+    }
   }
 });
 
@@ -194,7 +206,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   /**
    * Bailout and cancel all the things
    *
-   * @param {Errorr} Err The error that occurred
+   * @param {Error} Err The error that occurred
    * @api private
    */
   function failed(err) {
@@ -207,7 +219,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   }
 
   /**
-   * Cleans up all references when we are unsubscribing.
+   * Cleans up all references when we are un-subscribing.
    *
    * @api private
    */
@@ -392,7 +404,7 @@ Leverage.load = function load() {
   var leverage = this
     , completed = 0;
 
-  Leverage.scripts.forEach(function each(script) {
+  this._.scripts.forEach(function each(script) {
     leverage._.refresh(script, function reload(err) {
       //
       // Shit is broken yo, we should just emit an `error` event here because we
@@ -400,7 +412,7 @@ Leverage.load = function load() {
       //
       if (err) leverage.emit('error', err);
 
-      if (++completed === Leverage.scripts.length) {
+      if (++completed === leverage._.scripts.length) {
         leverage.emit('readystatechange', leverage.readyState);
 
       }
