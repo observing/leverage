@@ -1,12 +1,11 @@
 # leverage
 
+[![Build Status](https://travis-ci.org/observing/leverage.svg)](https://travis-ci.org/observing/leverage)
+[![NPM version](https://badge.fury.io/js/leverage.svg)](http://badge.fury.io/js/leverage)
+
 Leverage is an abstraction on top of the fabulous `redis` client for Node.js. It
 makes it much easier to work with lua scripting in Redis as well as provide some
 some missing features in Redis through the power of lua scripting.
-
-### Build status
-
-[![Build Status](https://travis-ci.org/observing/leverage.svg)](https://travis-ci.org/observing/leverage)
 
 ### Installation
 
