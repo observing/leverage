@@ -6,7 +6,7 @@ some missing features in Redis through the power of lua scripting.
 
 ### Build status
 
-[![Build Status](https://travis-ci.org/observing/leverage.png)](https://travis-ci.org/observing/leverage)
+[![Build Status](https://travis-ci.org/observing/leverage.svg)](https://travis-ci.org/observing/leverage)
 
 ### Installation
 
