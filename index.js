@@ -106,7 +106,7 @@ function Leverage(client, sub, options) {
   // Proxy all readyState changes to another event to make some of our internal
   // usage a bit easier.
   //
-  this.on('readystatechange', function readystatechagne(state) {
+  this.on('readystatechange', function readystatechange(state) {
     this.emit('readystate#'+ state);
   });
 
@@ -194,7 +194,7 @@ Leverage.prototype.subscribe = function subscribe(channel, options) {
   /**
    * Bailout and cancel all the things
    *
-   * @param {Errorr} Err The error that occured
+   * @param {Errorr} Err The error that occurred
    * @api private
    */
   function failed(err) {
@@ -402,6 +402,7 @@ Leverage.load = function load() {
 
       if (++completed === Leverage.scripts.length) {
         leverage.emit('readystatechange', leverage.readyState);
+
       }
     });
   });
@@ -447,7 +448,7 @@ Leverage.refresh = function reload(script, fn) {
     // parsed by the Redis client so we are using this flaky check.
     // See mranney/node_redis#436 for the reported issue.
     //
-    if (has) if (has[0] !== 0 || !Array.isArray(has)) {
+    if (has && (has[0] !== 0 || !Array.isArray(has))) {
       leverage._.SHA1[script.name] = SHA1;
       return fn.call(this);
     }
