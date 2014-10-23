@@ -116,6 +116,7 @@ function Leverage(client, sub, options) {
   // usage a bit easier.
   //
   this.on('readystatechange', function readystatechange(state) {
+    debug('updated the readyState to %s', state);
     this.emit('readystate#'+ state);
   });
 
@@ -166,6 +167,7 @@ Leverage.get('readyState',function readyState() {
  * @api public
  */
 Leverage.readable('publish', function publish(channel, message, fn) {
+  debug('publishing message to channel %s', channel);
   return this.leveragesend(channel, message, fn || noop);
 });
 
@@ -204,6 +206,8 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
     , replay =  'replay'  in options ? options.replay  : 0
     , queue = [];
 
+  debug('subscribing to channel: %s, ordered: %s, replay: %d', channel, ordered, replay);
+
   /**
    * Bailout and cancel all the things
    *
@@ -213,7 +217,7 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
   function failed(err) {
     leverage.emit(channel +'::error', err);
 
-    if (!bailout) return;
+    if (!bailout) return debug('received an error without bailout mode, gnoring it', err.message);
 
     leverage.emit(channel +'::bailout', err);
     leverage.unsubscribe(channel);
@@ -373,10 +377,12 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
  * @api public
  */
 Leverage.readable('unsubscribe', function unsubscribe(channel, fn) {
-  var booth = this;
+  var leverage = this;
+
+  debug('unsubscribing from channel %s', channel);
 
   this._.sub.unsubscribe(this._.namespace +'::'+ channel, function () {
-    booth.emit(channel +'::unsubscribe');
+    leverage.emit(channel +'::unsubscribe');
     (fn || noop).apply(this, arguments);
   });
 
@@ -390,6 +396,8 @@ Leverage.readable('unsubscribe', function unsubscribe(channel, fn) {
  * @api public
  */
 Leverage.readable('destroy', function destroy() {
+  debug('destroying leverage');
+
   if (this.client) this.client.quit();
   if (this.sub) this.sub.quit();
 
@@ -407,16 +415,20 @@ Leverage.load = function load() {
     , completed = 0;
 
   this._.scripts.forEach(function each(script) {
+    debug('refreshing script: %s', script.name);
+
     leverage._.refresh(script, function reload(err) {
       //
       // Shit is broken yo, we should just emit an `error` event here because we
       // cannot operate under these kind of conditions.
       //
-      if (err) leverage.emit('error', err);
+      if (err) {
+        debug('failed to reload the script %s', script.name);
+        leverage.emit('error', err);
+      }
 
       if (++completed === leverage._.scripts.length) {
         leverage.emit('readystatechange', leverage.readyState);
-
       }
     });
   });
@@ -453,6 +465,8 @@ Leverage.refresh = function reload(script, fn) {
   var code = this._.prepare(script.code)
     , SHA1 = crypto.createHash('SHA1').update(code).digest('hex').toString()
     , leverage = this;
+
+  debug('generated SHA1 %s for %s', SHA1, script.name);
 
   leverage._.client.script('exists', SHA1, function exists(err, has) {
     if (err) return fn.apply(this, arguments);
@@ -497,6 +511,7 @@ Leverage.seval = function seval(script, args) {
   // will be issued once all scripts are loaded.
   //
   if ('complete' !== this.readyState) {
+    debug('readyState was not complete yet, waiting for completion');
     return this.once('readystate#complete', function loaded() {
       //
       // It's fully loaded again, but as we pop()'d the callback off it, we need
@@ -517,7 +532,10 @@ Leverage.seval = function seval(script, args) {
     //
     // This was just a set operation so we can safely bailout.
     //
-    if (!args.length) return this;
+    if (!args.length) {
+      if (fn) fn.call(this);
+      return this;
+    }
   }
 
   //
