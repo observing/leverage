@@ -4,8 +4,8 @@
   "description": "Leverage is a thin wrapper around the `redis` client that integrates your lua scripts as methods AND supports reliable and fault tolerant Pub/Sub on top of redis.",
   "main": "index.js",
   "scripts": {
-    "test": "mocha $(find test -name '*.test.js') --ui bdd --reporter spec",
-    "coverage": "istanbul cover ./node_modules/.bin/_mocha -- test/*.test.js --reporter spec --ui bdd test.js"
+    "test": "mocha $(find test -name '*.test.js')",
+    "coverage": "istanbul cover ./node_modules/.bin/_mocha -- test/*.test.js"
   },
   "repository": {
     "type": "git",
@@ -25,16 +25,16 @@
   "author": "Arnout Kazemier <opensource@observe.it>",
   "license": "MIT",
   "devDependencies": {
-    "chai": "1.9.x",
+    "chai": "2.1.x",
     "istanbul": "0.3.x",
-    "mocha": "2.0.x",
-    "pre-commit": "0.0.x",
+    "mocha": "2.2.x",
+    "pre-commit": "1.0.x",
     "redis": "0.12.x"
   },
   "dependencies": {
     "diagnostics": "0.0.x",
     "eventemitter3": "0.1.x",
-    "fusing": "0.4.0",
+    "fusing": "1.0.x",
     "underverse": "0.1.x"
   }
 }
