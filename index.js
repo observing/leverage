@@ -658,12 +658,6 @@ Leverage.introduce = function introduce(directory, obj) {
       var args = slice.call(arguments, 0);
       return this._.seval(script, args);
     };
-
-    //
-    // Reset the function name to the name of the script which will hopefully
-    // improve stack traces.
-    //
-    obj[script.name].name = script.name;
   });
 
   return scripts;
