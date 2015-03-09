@@ -26,7 +26,9 @@ describe('lua', function () {
         red.quit(done);
       });
 
-      client.publish('pub', 'lish');
+      red.on('subscribe', function () {
+        client.publish('pub', 'lish');
+      });
     });
 
     it('should only send messages for the given channel', function (done) {
