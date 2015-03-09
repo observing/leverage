@@ -32,15 +32,18 @@ describe('lua', function () {
     it('should only send messages for the given channel', function (done) {
       var client = leverage(true);
 
-      client.subscribe('foos', { replay: 0 }).on('foos::message', function (msg, id) {
-        expect(msg).to.equal('foo');
-        expect(id).to.equal(1);
+      client.subscribe('foos', { replay: 0 });
+      client.once('foos::online', function () {
+        client.on('foos::message', function (msg, id) {
+          expect(msg).to.equal('foo');
+          expect(id).to.equal(1);
 
-        client.destroy();
-        done();
+          client.destroy();
+          done();
+        });
+
+        client.publish('foos', 'foo');
       });
-
-      client.publish('foos', 'foo');
     });
 
     it('should increase and return the private counter', function (done) {
