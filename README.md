@@ -4,12 +4,12 @@
 
 [npm-leverage-badge]: https://img.shields.io/npm/v/leverage.svg?style=flat-square
 [npm-leverage]: http://browsenpm.org/package/leverage
-[travis-leverage-badge]: https://img.shields.io/travis/primus/leverage/master.svg?style=flat-square
-[travis-leverage]: https://travis-ci.org/primus/leverage
-[david-leverage-badge]: https://img.shields.io/david/primus/leverage.svg?style=flat-square
-[david-leverage]: https://david-dm.org/primus/leverage
-[coverage-leverage-badge]: https://img.shields.io/coveralls/primus/leverage/master.svg?style=flat-square
-[coverage-leverage]: https://coveralls.io/r/primus/leverage?branch=master
+[travis-leverage-badge]: https://img.shields.io/travis/observing/leverage/master.svg?style=flat-square
+[travis-leverage]: https://travis-ci.org/observing/leverage
+[david-leverage-badge]: https://img.shields.io/david/observing/leverage.svg?style=flat-square
+[david-leverage]: https://david-dm.org/observing/leverage
+[coverage-leverage-badge]: https://img.shields.io/coveralls/observing/leverage/master.svg?style=flat-square
+[coverage-leverage]: https://coveralls.io/r/observing/leverage?branch=master
 
 Leverage is an abstraction on top of the fabulous `redis` client for Node.js. It
 makes it much easier to work with lua scripting in Redis as well as provide some
