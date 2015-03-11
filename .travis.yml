@@ -6,6 +6,10 @@ node_js:
   - "iojs"
 before_install:
   - 'if [ "${TRAVIS_NODE_VERSION}" == "0.8" ] ; then npm install -g npm@2.7.0; fi'
+script:
+  - "npm run test-travis"
+after_script:
+  - "npm install coveralls@2.11.x && cat coverage/lcov.info | coveralls"
 services: redis
 notifications:
   irc: "irc.freenode.org#observing"
