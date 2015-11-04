@@ -283,14 +283,7 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
    * @api private
    */
   function allowed(packet) {
-    if (!packet) return false;
-
-    if (uv.position === 'inactive' || (!uv.received(packet.id) && ordered)) {
-      queue.push(packet);
-      return false;
-    }
-
-    return true;
+    return !(!packet || uv.position === 'inactive' || (!uv.received(packet.id) && ordered));
   }
 
   /**
@@ -304,6 +297,7 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
     packet = parse(packet);
 
     if (allowed(packet)) emit(packet);
+    else queue.push(packet);
   }
 
   //
