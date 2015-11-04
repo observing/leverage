@@ -564,7 +564,7 @@ Leverage.seval = function seval(script, args) {
       // As the request has failed, we are going to re-add the script in to our
       // cache if possible and eval the command
       //
-      leverage._.refresh(script, function noop() {});
+      leverage._.refresh(script, noop);
       leverage._.client.send_command(
         'eval',
         [code, keys].concat(args),
