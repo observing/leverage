@@ -346,7 +346,7 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
       }
 
       if (Array.isArray(data)) {
-        data.map(parse).filter(allowed).forEach(emit);
+        for ( var i=0; i<data.length; i++ ) onmessage(data[i]);
       }
 
       flush();
