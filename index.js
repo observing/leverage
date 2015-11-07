@@ -34,7 +34,7 @@ function Leverage(client, sub, options) {
   // could do an instanceOf RedisClient check but I don't want to have Redis as
   // a dependency of this module.
   //
-  if ('object' === typeof sub && !options && !sub.send_command) {
+  if ( typeof(sub) == 'object' && !options && !sub.send_command) {
     options = sub;
     sub = null;
   }
@@ -55,52 +55,38 @@ function Leverage(client, sub, options) {
     //
     // The namespace is used to prefix all keys that are used by this module.
     //
-    namespace: {
-      value: options.namespace || 'leverage'
-    },
+    namespace: { value: options.namespace || 'leverage' },
 
     //
     // Stores the SHA1 keys from the scripts that are added.
     //
-    SHA1: {
-      value: options.SHA1 || Object.create(null)
-    },
+    SHA1: { value: options.SHA1 || Object.create(null) },
 
     //
     // Stores the scripts that we're currently using in Leverage
     //
-    scripts: {
-      value: Leverage.scripts.slice(),
-    },
+    scripts: { value: Leverage.scripts.slice() },
 
     //
     // The amount of items we should log for our Pub/Sub.
     //
-    backlog: {
-      value: options.backlog || 100000
-    },
+    backlog: { value: options.backlog || 100000 },
 
     //
     // How many seconds should the item stay alive in our backlog.
     //
-    expire: {
-      value: options.expire || 1000
-    },
+    expire: { value: options.expire || 1000 },
 
     //
     // The pre-configured & authenticated Redis client that is used to send
     // commands and is loaded with the scripts.
     //
-    client: {
-      value: client
-    },
+    client: { value: client },
 
     //
     // Dedicated client that is used for subscribing to a given channel.
     //
-    sub: {
-      value: sub
-    },
+    sub: { value: sub },
 
     //
     // Introduce a bunch of private methods.
@@ -204,7 +190,7 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
   var ordered = 'ordered' in options ? !!options.ordered : false
     , bailout = 'bailout' in options ? options.bailout : true
     , replay =  'replay'  in options ? options.replay  : 0
-    , queue = [];
+    , queue = [], queueSortTemp = [];
 
   debug('subscribing to channel: %s, ordered: %s, replay: %d', channel, ordered, replay);
 
@@ -217,7 +203,7 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
   function failed(err) {
     leverage.emit(channel +'::error', err);
 
-    if (!bailout) return debug('received an error without bailout mode, gnoring it', err.message);
+    if (!bailout) return debug('received an error without bailout mode, ignoring it', err.message);
 
     leverage.emit(channel +'::bailout', err);
     leverage.unsubscribe(channel);
@@ -270,7 +256,9 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
       // We might want to indicate that these are already queued, so we don't
       // fetch data again.
       //
-      queue.splice(0).sort(function sort(a, b) {
+	  queueSortTemp.length = 0;
+	  Array.prototype.push.apply(queueSortTemp, queue);
+	  queueSortTemp.sort(function sort(a, b) {
         return a.id - b.id;
       }).forEach(onmessage);
     }
@@ -313,15 +301,14 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
     // We're ready and starting processing the subscriptions and published
     // messages.
     //
-    leverage.emit(channel +'::online', packet.id);
+    leverage.emit(channel + '::online', packet.id);
 
     //
     // lua edge case it can return an object instead of an array ._. when it's
     // empty, yay.
     //
-    if (Array.isArray(packet.messages)) {
+    if (Array.isArray(packet.messages))
       packet.messages.map(parse).filter(Boolean).forEach(emit);
-    }
 
     //
     // Set the cursor to the received package.
@@ -341,9 +328,8 @@ Leverage.readable('subscribe', function subscribe(channel, options) {
     }), function next(err, data) {
       processing(true);
 
-      if (err || !data) {
+      if (err || !data)
         return failed(err || new Error('No data retrieved from fetching'));
-      }
 
       if (Array.isArray(data)) {
         for ( var i=0; i<data.length; i++ ) onmessage(data[i]);
