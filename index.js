@@ -1,5 +1,3 @@
-'use strict';
-
 var debug = require('diagnostics')('leverage')
   , Underverse = require('underverse')
   , crypto = require('crypto')
